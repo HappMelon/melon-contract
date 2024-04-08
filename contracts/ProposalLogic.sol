@@ -153,6 +153,16 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         myToken = _myToken;
     }
 
+    // 获取用户余额
+    function getUserBalance(address userAddress) public view returns (uint256) {
+        return balances[userAddress];
+    }
+
+    // 获取用户投票的金额
+    function getUserVotingRights(address userAddress) public view returns (uint256) {
+        return usedVotingRights[userAddress];
+    }
+
     // 常规质押代币
     function deposit(uint256 amount) public {
         require(
@@ -497,7 +507,8 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         uint totalVotesForWinningOption = proposalOptions[proposalId][
             winningOptionId
         ].voteCount;
-        uint totalVotesForFailedOption = totalStake - totalVotesForWinningOption;
+        uint totalVotesForFailedOption = totalStake -
+            totalVotesForWinningOption;
 
         require(
             !proposal.active,
@@ -537,7 +548,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
             } else {
                 uint256 voterPunish = (voteCount * totalStakeExtractFee) /
                     totalVotesForFailedOption;
-                    // 计算惩罚部分金额
+                // 计算惩罚部分金额
                 voterPunish -= voteCount;
                 balances[voter] -= voterPunish; // 更新输家余额
                 emit RewardDistributed(voter, proposalId, voterPunish, false);

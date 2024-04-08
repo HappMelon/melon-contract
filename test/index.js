@@ -88,7 +88,7 @@ describe("Test", function () {
     let accountABalance = await proposalLogic.balances(accountA.address);
     let accountBBalance = await proposalLogic.balances(accountB.address);
     let accountCBalance = await proposalLogic.balances(accountC.address);
-    let accountDBalance = await proposalLogic.balances(accountD.address);
+    let accountDBalance = await proposalLogic.getUserBalance(accountD.address);
     console.log("accountABalance", ethers.formatEther(accountABalance));
     console.log("accountBBalance", ethers.formatEther(accountBBalance));
     console.log("accountCBalance", ethers.formatEther(accountCBalance));

@@ -3,8 +3,11 @@ pragma solidity ^0.8.20;
 
 
 interface  IProposalLogic {
-    
 
+    function getUserBalance(address) external view returns (uint256);
+
+    function getUserVotingRights(address userAddress) external view returns (uint256);
+    
     function deposit(uint256 amount) external;
 
     // Submit a proposal for review
