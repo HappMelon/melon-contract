@@ -5,9 +5,14 @@
 ![alt text](image.png)
 4. 根据测试需要，添加测试账户到浏览器钱包中。
 
-# 已经部署合约地址（zkSync）：
-- 代币合约： 0x76d094D4A9fd60f6df81a2779Dd4BDe5105cFCc5
-- 提案合约： 0x9Bb9A24002E6826175a92A329340Fa8932F974B8
+# 已经部署合约地址：
+1. zksync testnet
+FlareTokenModule#FlareToken 0x76d094D4A9fd60f6df81a2779Dd4BDe5105cFCc5
+ProposalLogicModule#ProposalLogic 0x9Bb9A24002E6826175a92A329340Fa8932F974B8
+2. sepolia testnet
+FlareTokenModule#FlareToken - 0xBefF43B8AFF903D21293B229104f138FC9dF83Ce
+ProposalLogicModule#ProposalLogic - 0xB6cBBbbF49664c749Fc519d7d03194C22645CC31
+
 
 # 测试合约
 1. `npx hardhat node`

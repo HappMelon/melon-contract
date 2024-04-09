@@ -18,6 +18,10 @@ describe("Test", function () {
       [flareContract.target],
       accountA
     );
+   
+    // 打印地址
+    console.log("flareContract: ", flareContract.target);
+    console.log("proposalLogic: ", proposalLogic.target);
     // 铸造1000代币
     await flareContract.mint(accountA.address, 100n);
     await flareContract.mint(accountB.address, 100n);
@@ -73,6 +77,9 @@ describe("Test", function () {
     await proposalLogic.connect(accountB).vote(0n, 0n, ethers.parseEther("3"));
     await proposalLogic.connect(accountC).vote(0n, 1n, ethers.parseEther("4"));
     await proposalLogic.connect(accountD).vote(0n, 1n, ethers.parseEther("6"));
+    let accountDVote = await proposalLogic.getUserVotingRights(accountD.address);
+    console.log("accountDVote", ethers.formatEther(accountDVote));
+
 
     let voteOption1Info = await proposalLogic.proposalOptions(0n, 0n);
     let voteOption2Info = await proposalLogic.proposalOptions(0n, 1n);
@@ -89,10 +96,12 @@ describe("Test", function () {
     let accountBBalance = await proposalLogic.balances(accountB.address);
     let accountCBalance = await proposalLogic.balances(accountC.address);
     let accountDBalance = await proposalLogic.getUserBalance(accountD.address);
+
     console.log("accountABalance", ethers.formatEther(accountABalance));
     console.log("accountBBalance", ethers.formatEther(accountBBalance));
     console.log("accountCBalance", ethers.formatEther(accountCBalance));
     console.log("accountDBalance", ethers.formatEther(accountDBalance));
+
 
 
   });
