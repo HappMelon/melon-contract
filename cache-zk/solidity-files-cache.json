@@ -52,8 +52,8 @@
       ]
     },
     "E:\\web3_part_time_project\\melon_contract_hardhat\\contracts\\ProposalLogic.sol": {
-      "lastModificationDate": 1712533018317,
-      "contentHash": "74d33a282c34b3ee1b20a673eb95842c",
+      "lastModificationDate": 1712720898369,
+      "contentHash": "5a58b7c24bc62b9b19bdf41b2106c40a",
       "sourceName": "contracts/ProposalLogic.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -100,12 +100,6 @@
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
         "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol",
-        "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20FlashMint.sol",
         "./Counters.sol"
       ],
       "versionPragmas": [
@@ -116,8 +110,8 @@
       ]
     },
     "E:\\web3_part_time_project\\melon_contract_hardhat\\contracts\\IProposalLogic.sol": {
-      "lastModificationDate": 1712533046750,
-      "contentHash": "927f1fdc7468489d218652dd188a4ed9",
+      "lastModificationDate": 1712718009687,
+      "contentHash": "7b8a459ba76380f6c1d1da3b0c791c4c",
       "sourceName": "contracts/IProposalLogic.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -1826,8 +1820,8 @@
       ]
     },
     "E:\\web3_part_time_project\\melon_contract_hardhat\\contracts\\FlareToken.sol": {
-      "lastModificationDate": 1712368330278,
-      "contentHash": "3f6b220de2db684b38779f3db8f97863",
+      "lastModificationDate": 1712720300041,
+      "contentHash": "b9bd0df5452958c8f12ab1ae4a098b52",
       "sourceName": "contracts/FlareToken.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -1868,20 +1862,68 @@
         }
       },
       "imports": [
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol",
-        "@openzeppelin/contracts/utils/Pausable.sol",
-        "@openzeppelin/contracts/access/Ownable.sol",
         "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20FlashMint.sol",
-        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
         "FlareToken"
+      ]
+    },
+    "E:\\web3_part_time_project\\melon_contract_hardhat\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\extensions\\ERC20Pausable.sol": {
+      "lastModificationDate": 1712401793980,
+      "contentHash": "64b7606ccba31af7e49e3b2d8af1b948",
+      "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": true,
+            "mode": "3"
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.0",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3"
+            },
+            "compilerPath": "C:\\Users\\16952\\AppData\\Local\\hardhat-nodejs\\Cache\\compilers-v2\\zksolc\\zksolc-v1.4.0",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {}
+          }
+        }
+      },
+      "imports": [
+        "../ERC20.sol",
+        "../../../utils/Pausable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ERC20Pausable"
       ]
     }
   }

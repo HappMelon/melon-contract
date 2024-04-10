@@ -18,15 +18,16 @@ describe("Test", function () {
       [flareContract.target],
       accountA
     );
-   
+
     // 打印地址
     console.log("flareContract: ", flareContract.target);
     console.log("proposalLogic: ", proposalLogic.target);
-    // 铸造1000代币
-    await flareContract.mint(accountA.address, 100n);
-    await flareContract.mint(accountB.address, 100n);
-    await flareContract.mint(accountC.address, 100n);
-    await flareContract.mint(accountD.address, 100n);
+    // 铸造100代币
+    let mintAmount = ethers.parseEther("100");
+    await flareContract.mint(accountA.address, mintAmount);
+    await flareContract.mint(accountB.address, mintAmount);
+    await flareContract.mint(accountC.address, mintAmount);
+    await flareContract.mint(accountD.address, mintAmount);
     // 授权
     await flareContract
       .connect(accountA)
@@ -41,20 +42,15 @@ describe("Test", function () {
       .connect(accountD)
       .approve(proposalLogic.target, ethers.parseEther("100"));
   });
-
-  // it("Test proposal for successful grades", async function () {
-  //   // 创建提案
-  //   let index = await proposalLogic.createProposalWithOptions(
-  //     "this a proposal",
-  //     ["option1", "option2"],
-  //     ethers.parseEther("70"),
-  //     ethers.parseEther("1")
-  //   );
-  //   let proposal = await proposalLogic.proposals(0);
-  //   console.log("index: ", index, "proposal", proposal);
-  //   expect(proposal).not.null;
-  // });
-
+  // 测试积分兑换
+  it("Test redemption of points", async function () {
+    let points = ethers.parseEther("5");
+    await proposalLogic.deposit(ethers.parseEther("100"));
+    await proposalLogic.exchangePoints(points);
+    let balance = await proposalLogic.balances(accountA.address);
+    expect(balance).to.equal(points + ethers.parseEther("100"));
+  });
+  // 测试提交提案和结算胜利的选项
   it("Test proposal settlement victory option logic", async function () {
     // A 创建提案
     await proposalLogic.createProposalWithOptions(
@@ -77,9 +73,10 @@ describe("Test", function () {
     await proposalLogic.connect(accountB).vote(0n, 0n, ethers.parseEther("3"));
     await proposalLogic.connect(accountC).vote(0n, 1n, ethers.parseEther("4"));
     await proposalLogic.connect(accountD).vote(0n, 1n, ethers.parseEther("6"));
-    let accountDVote = await proposalLogic.getUserVotingRights(accountD.address);
+    let accountDVote = await proposalLogic.getUserVotingRights(
+      accountD.address
+    );
     console.log("accountDVote", ethers.formatEther(accountDVote));
-
 
     let voteOption1Info = await proposalLogic.proposalOptions(0n, 0n);
     let voteOption2Info = await proposalLogic.proposalOptions(0n, 1n);
@@ -88,7 +85,7 @@ describe("Test", function () {
     console.log("选项2得票", ethers.formatEther(voteOption2Info.voteCount));
     // 结束提案
     await proposalLogic.deactivateProposal(0n);
-    
+
     // 假设选项1获胜
     await proposalLogic.settleRewards(0n, 0n);
 
@@ -101,8 +98,5 @@ describe("Test", function () {
     console.log("accountBBalance", ethers.formatEther(accountBBalance));
     console.log("accountCBalance", ethers.formatEther(accountCBalance));
     console.log("accountDBalance", ethers.formatEther(accountDBalance));
-
-
-
   });
 });

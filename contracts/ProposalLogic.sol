@@ -6,44 +6,9 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20FlashMint.sol";
 import "./Counters.sol";
 
 contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
-    // 类型声明
-    // 提案
-    struct Proposal {
-        address proposer; // 提案发起人
-        string description; // 提案描述
-        uint256 stakeAmount; // 质押代币数量
-        bool active; // 提案是否活跃
-        bool isSettled; // 添加属性以跟踪提案是否已结算
-        bool isWagered;
-        uint256 endTime;
-    }
-    // 提议选项
-    struct Option {
-        string description; // 选项描述
-        uint256 voteCount; // 投票计数
-    }
-    // 质押
-    struct Stake {
-        uint256 amount; // 质押的金额
-        uint256 unlockTime; // 资金解锁的时间
-        address staker; // 质押者地址
-        bool isWagered; //是否对赌
-    }
-    // 投票记录
-    struct VoteRecord {
-        uint256 proposalId; // 提案ID
-        uint256 optionId; // 用户选择的选项ID
-        uint256 amount; // 投票数量
-    }
     // 状态变量
     uint256 constant MAX_UINT256 = type(uint256).max;
     address public myToken; // 用于投票的代币地址
@@ -72,82 +37,8 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
     mapping(uint256 => uint256[]) public voteCountsByProposal;
     mapping(address => mapping(uint256 => uint256)) public voterIndexInProposal;
 
-    //事件
-    event Received(address caller, uint amount, string message);
-    event Deposited(address indexed user, uint amount);
-    event Withdrawn(address indexed user, uint amount);
-    event Voted(
-        address indexed _address,
-        uint256 indexed _proposalId,
-        uint256 indexed _optionId,
-        uint256 _amount
-    );
-    event ProposalAndOptionsSubmitted(
-        address indexed user,
-        uint256 indexed proposalIndex,
-        string proposalDescription,
-        string[] optionDescriptions,
-        uint256 endtime
-    );
-    event DepositForProposal(
-        address indexed staker,
-        uint256 amount,
-        bool staked,
-        uint256 unlockTime,
-        uint256 indexed stakeIndex
-    );
-    event TokensStaked(
-        address indexed user,
-        uint256 amount,
-        bool isForProposal
-    );
-    event FundsSettledForAverageQuality(
-        uint256 indexed proposalId,
-        address indexed proposer,
-        uint256 amountToReturn
-    );
-    event WithdrawalDetailed(
-        address indexed user,
-        uint256 amountWithdrawn,
-        uint256 balanceAfterWithdrawal
-    );
-    event UnlockTimeUpdated(
-        address indexed staker,
-        uint256 indexed stakeIndex,
-        uint256 newUnlockTime
-    );
-    event FundsPenalizedForNonCompliance(
-        uint256 indexed proposalId,
-        address indexed proposer,
-        uint256 penalty
-    );
-    event ProposalStatusChanged(uint256 proposalId, bool isActive);
-    event ProposalEndTime(uint256 _proposalId, uint256 endTime);
-    event ProposalForUser(
-        address indexed userAddress,
-        uint256 indexed proposalId,
-        string proposalDescription,
-        uint256 stakeAmount,
-        string[] optionDescriptions,
-        uint256 endtime
-    );
-    event StakeReleased(
-        address indexed user,
-        uint256 stakeIndex,
-        bool penalized,
-        uint256 amountReleased
-    );
-    event ProposalEnded(uint256 indexed proposalId, bool isActive);
-    event ProposalConcluded(uint256 indexed proposalId, bool isActive);
-    event RewardDistributed(
-        address indexed voter,
-        uint256 proposalId,
-        uint256 amount,
-        bool isWinner
-    );
-
-    // 错误
     // 修饰符
+
     // 函数
     constructor(address _myToken) Ownable(msg.sender) {
         myToken = _myToken;
@@ -159,7 +50,9 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
     }
 
     // 获取用户投票的金额
-    function getUserVotingRights(address userAddress) public view returns (uint256) {
+    function getUserVotingRights(
+        address userAddress
+    ) public view returns (uint256) {
         return usedVotingRights[userAddress];
     }
 
@@ -210,7 +103,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         string[] memory optionDescriptions,
         uint amount,
         uint256 endtime
-    ) public onlyOwner returns (uint256) {
+    ) public returns (uint256) {
         // 创建提案
         uint256 proposalId = _proposalIds.current(); // 获取新的提案ID
         _proposalIds.increment(); // 增加提案ID
@@ -303,6 +196,13 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         );
 
         return proposalId;
+    }
+
+    function exchangePoints(uint256 points) public {
+        require(points > 0, "Points must be greater than zero");
+        // 执行兑换逻辑
+        balances[msg.sender] += points;
+        emit ExchangePoints(msg.sender, points);
     }
 
     function withdraw(uint256 _amount) public nonReentrant {
