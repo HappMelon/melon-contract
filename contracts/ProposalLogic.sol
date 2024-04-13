@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 import "./IProposalLogic.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -19,23 +19,28 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
     uint256[] public UserSstakeAmounts;
     Proposal[] public proposals; // 提案数组
 
-    mapping(uint256 => uint256) public votingEndTimes; // 投票结束时间
+    // mapping(uint256 => uint256) public votingEndTimes; // 投票结束时间
     mapping(address => uint256) public balances;
-    mapping(uint256 => address[]) public proposalVoters;
+    // mapping(uint256 => address[]) public proposalVoters;
     mapping(address => VoteRecord[]) public userVotingHistory; // 用户的投票历史记录映射
-    mapping(address => Stake[]) public stakesForUser;
+    // mapping(address => Stake[]) public stakesForUser;
     mapping(uint256 => Option[]) public proposalOptions; // 提案ID到选项数组的映射
     mapping(address => mapping(uint256 => bool)) public voters;
     // 用户发起提案时的金额
     mapping(address => uint256) public proposalTokenDeposits;
     // 用户投票的金额
     mapping(address => uint256) public usedVotingRights;
-    mapping(address => mapping(uint256 => uint256)) public votingRecords;
-    mapping(address => mapping(uint256 => uint256)) public added_proposal;
+    // mapping(address => mapping(uint256 => uint256)) public votingRecords;
+    // mapping(address => mapping(uint256 => uint256)) public added_proposal;
     mapping(uint256 => address[]) public voterAddressesByProposal;
     mapping(uint256 => uint256[]) public optionIdsByProposal;
     mapping(uint256 => uint256[]) public voteCountsByProposal;
     mapping(address => mapping(uint256 => uint256)) public voterIndexInProposal;
+    // 记录已结算提案的获胜选项
+    mapping(uint256 => uint) public winningOptionByProposal;
+    // 记录结算提案用户的奖励或者惩罚
+    mapping(uint => mapping(address => int))
+        public rewardOrPenaltyInSettledProposal;
 
     // 修饰符
 
@@ -269,7 +274,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         // 更新被选中提案选项的票数
         // 更新用户对应的提案的投票金额
         proposalOptions[_proposalId][_optionId].voteCount += _amount;
-        votingRecords[msg.sender][_proposalId] += _amount;
+        // votingRecords[msg.sender][_proposalId] += _amount;
         // 记录已经投票过
         voters[msg.sender][_proposalId] = true;
         // 记录用户投票历史
@@ -277,7 +282,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
             VoteRecord(_proposalId, _optionId, _amount)
         );
         // 记录当前投票者
-        proposalVoters[_proposalId].push(msg.sender);
+        // proposalVoters[_proposalId].push(msg.sender);
 
         // 记录投票者地址、选项ID和投票数
         voterAddressesByProposal[_proposalId].push(msg.sender);
@@ -387,6 +392,31 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         emit StakeReleased(user, stakeIndex, penalizeStake, amountToRelease);
     }
 
+    // 获取已结算提案的获胜选项
+    function getWinningOptionByProposal(uint proposalId) public view returns (uint) {
+        Proposal memory proposal = proposals[proposalId];
+        if (!proposal.isSettled) {
+            revert UnsettledProposal(proposalId, false);
+        }
+        return winningOptionByProposal[proposalId];
+    }
+
+    // 查询已结算提案，获得的奖励或者惩罚
+    function getRewardOrPenaltyInSettledProposal(
+        uint proposalId
+    ) public view returns (int) {
+        Proposal memory proposal = proposals[proposalId];
+        bool isVote = voters[msg.sender][proposalId];
+
+        if (!proposal.isSettled) {
+            revert UnsettledProposal(proposalId, false);
+        }
+        if (!isVote) {
+            revert UserNotVoted();
+        }
+        return rewardOrPenaltyInSettledProposal[proposalId][msg.sender];
+    }
+
     function settleRewards(
         uint256 proposalId,
         uint256 winningOptionId
@@ -403,7 +433,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         // uint platformFee = (totalStake * 5) / 100;
         // uint proposalPromoterReward = (totalStake * 5) / 100;
         // uint totalFee = platformFee + proposalPromoterReward;
-        uint totalStakeExtractFee = (totalStake * 80) / 100;
+        uint totalStakeExtractFee = (totalStake * 90) / 100;
         uint totalVotesForWinningOption = proposalOptions[proposalId][
             winningOptionId
         ].voteCount;
@@ -417,8 +447,13 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         require(!proposal.isSettled, "Rewards already settled");
 
         require(totalVotesForWinningOption > 0, "No votes for winning option");
-        // 假设的奖池总金额和平台收取比例
+        // 提案发起者余额增加提案质押的5%奖励
+        // balances[proposal.proposer] += proposalPromoterReward;
+        balances[proposal.proposer] += (totalStake * 5) / 100;
 
+        // 记录提案获胜的选项
+        winningOptionByProposal[proposalId] = winningOptionId;
+        // 假设的奖池总金额和平台收取比例
         for (
             uint256 i = 0;
             i < voterAddressesByProposal[proposalId].length;
@@ -444,6 +479,10 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
                 voterReward -= voteCount;
                 // 计算并分配奖励给赢家
                 balances[voter] += voterReward; // 更新赢家余额
+                // 记录获得的奖励
+                rewardOrPenaltyInSettledProposal[proposalId][
+                    voter
+                ] = int256(voterReward);
                 emit RewardDistributed(voter, proposalId, voterReward, true);
             } else {
                 uint256 voterPunish = (voteCount * totalStakeExtractFee) /
@@ -451,6 +490,10 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
                 // 计算惩罚部分金额
                 voterPunish -= voteCount;
                 balances[voter] -= voterPunish; // 更新输家余额
+                // 记录获得的惩罚
+                rewardOrPenaltyInSettledProposal[proposalId][
+                    voter
+                ] = int256(voterPunish) * -1;
                 emit RewardDistributed(voter, proposalId, voterPunish, false);
             }
         }

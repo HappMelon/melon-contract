@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
-
-interface  IProposalLogic {
+interface IProposalLogic {
     // 类型声明
     // 提案
     struct Proposal {
@@ -106,15 +105,24 @@ interface  IProposalLogic {
         bool isWinner
     );
     event ExchangePoints(address indexed user, uint256 points);
+
     // 错误
+    error UnsettledProposal(uint proposalId, bool isSettle);
+    error UserNotVoted();
+    // 获取已结算提案的获胜选项
+    function getWinningOptionByProposal(uint proposalId) external view returns (uint);
+    // 获取用户在结算提案中获得的奖励或者惩罚
+    function getRewardOrPenaltyInSettledProposal(uint proposalId) external view returns (int);
 
     // 积分兑换
     function exchangePoints(uint256 amount) external;
 
     function getUserBalance(address) external view returns (uint256);
 
-    function getUserVotingRights(address userAddress) external view returns (uint256);
-    
+    function getUserVotingRights(
+        address userAddress
+    ) external view returns (uint256);
+
     function deposit(uint256 amount) external;
 
     // Submit a proposal for review
@@ -209,9 +217,7 @@ interface  IProposalLogic {
     function settleFundsForAverageQuality(uint256 _proposalId) external;
 
     // Verify compliance and expectations
-    function verifyComplianceAndExpectations(
-        uint256 _proposalId
-    ) external;
+    function verifyComplianceAndExpectations(uint256 _proposalId) external;
 
     // Check if the quality compliance is below expectations
     function checkQualityComplianceBelowExpectations(
