@@ -4,6 +4,27 @@
   "sourceName": "contracts/IProposalLogic.sol",
   "abi": [
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "isSettle",
+          "type": "bool"
+        }
+      ],
+      "name": "UnsettledProposal",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "UserNotVoted",
+      "type": "error"
+    },
+    {
       "anonymous": false,
       "inputs": [
         {
@@ -692,6 +713,25 @@
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getRewardOrPenaltyInSettledProposal",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "",
           "type": "address"
@@ -746,6 +786,25 @@
         }
       ],
       "name": "getUserVotingRights",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getWinningOptionByProposal",
       "outputs": [
         {
           "internalType": "uint256",

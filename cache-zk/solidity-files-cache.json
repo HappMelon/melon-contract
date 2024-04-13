@@ -52,8 +52,8 @@
       ]
     },
     "E:\\web3_part_time_project\\melon_contract_hardhat\\contracts\\ProposalLogic.sol": {
-      "lastModificationDate": 1712720898369,
-      "contentHash": "5a58b7c24bc62b9b19bdf41b2106c40a",
+      "lastModificationDate": 1713000962988,
+      "contentHash": "27dbad0d5dab8b41a599d0b1775478f1",
       "sourceName": "contracts/ProposalLogic.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -103,15 +103,15 @@
         "./Counters.sol"
       ],
       "versionPragmas": [
-        "^0.8.20"
+        "^0.8.24"
       ],
       "artifacts": [
         "ProposalLogic"
       ]
     },
     "E:\\web3_part_time_project\\melon_contract_hardhat\\contracts\\IProposalLogic.sol": {
-      "lastModificationDate": 1712718009687,
-      "contentHash": "7b8a459ba76380f6c1d1da3b0c791c4c",
+      "lastModificationDate": 1713000968445,
+      "contentHash": "7348a33d633513b8e4233f7a8c4e7b4f",
       "sourceName": "contracts/IProposalLogic.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -153,7 +153,7 @@
       },
       "imports": [],
       "versionPragmas": [
-        "^0.8.20"
+        "^0.8.24"
       ],
       "artifacts": [
         "IProposalLogic"
@@ -1820,8 +1820,8 @@
       ]
     },
     "E:\\web3_part_time_project\\melon_contract_hardhat\\contracts\\FlareToken.sol": {
-      "lastModificationDate": 1712720300041,
-      "contentHash": "b9bd0df5452958c8f12ab1ae4a098b52",
+      "lastModificationDate": 1712983070715,
+      "contentHash": "48edd2793c50f5142c47a9d107ff4054",
       "sourceName": "contracts/FlareToken.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -1867,7 +1867,7 @@
         "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol"
       ],
       "versionPragmas": [
-        "^0.8.20"
+        "^0.8.24"
       ],
       "artifacts": [
         "FlareToken"
