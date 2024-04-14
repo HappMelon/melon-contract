@@ -52,8 +52,8 @@
       ]
     },
     "E:\\web3_part_time_project\\melon_contract_hardhat\\contracts\\ProposalLogic.sol": {
-      "lastModificationDate": 1713104540251,
-      "contentHash": "add6223aadea4673d1169cdaeb28fbdb",
+      "lastModificationDate": 1713109288551,
+      "contentHash": "0596a8675567acf7606a1092dfddbfd5",
       "sourceName": "contracts/ProposalLogic.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -110,8 +110,8 @@
       ]
     },
     "E:\\web3_part_time_project\\melon_contract_hardhat\\contracts\\IProposalLogic.sol": {
-      "lastModificationDate": 1713104533729,
-      "contentHash": "3944b443b2a7691e428658b653f4529d",
+      "lastModificationDate": 1713109295499,
+      "contentHash": "caa9a4b7bf10506c70bd1baadfa15cb6",
       "sourceName": "contracts/IProposalLogic.sol",
       "solcConfig": {
         "version": "0.8.24",
