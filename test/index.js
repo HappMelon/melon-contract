@@ -98,14 +98,13 @@ describe("Test", function () {
 
     // 假设选项1获胜
     await proposalLogic.settleRewards(0n, 0n);
-
     let proposalCreatorBalance = await proposalLogic.balances(
       proposalCreatorAccount.address
     );
     let accountABalance = await proposalLogic.balances(accountA.address);
     let accountBBalance = await proposalLogic.balances(accountB.address);
     let accountCBalance = await proposalLogic.balances(accountC.address);
-    let accountDBalance = await proposalLogic.getUserBalance(accountD.address);
+    let accountDBalance = await proposalLogic.balances(accountD.address);
 
     // 提案创建者获得5%的奖励
     console.log(
@@ -118,13 +117,13 @@ describe("Test", function () {
     console.log("accountDBalance", ethers.formatEther(accountDBalance));
 
     // 测试查询提案获胜选项
-    let winOptionId = await proposalLogic.getWinningOptionByProposal(0n);
+    let winOptionId = await proposalLogic.winningOptionByProposal(0n);
     console.log("winOptionId", winOptionId);
 
     // 测试查询用户投票后结算获得的奖励或者惩罚
     let rewardAmount = await proposalLogic
       .connect(accountA)
-      .getRewardOrPenaltyInSettledProposal(0n);
+      .rewardOrPenaltyInSettledProposal(0n, accountA.address);
     console.log("rewardAmount", ethers.formatEther(rewardAmount));
   });
 });

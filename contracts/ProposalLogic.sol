@@ -49,11 +49,6 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         myToken = _myToken;
     }
 
-    // 获取用户余额
-    function getUserBalance(address userAddress) public view returns (uint256) {
-        return balances[userAddress];
-    }
-
     // 获取用户投票的金额
     function getUserVotingRights(
         address userAddress
@@ -333,19 +328,11 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         }
     }
 
-    function proposalsLength() public view returns (uint256) {
-        return proposals.length;
-    }
-
-    function getOptionsCount(uint256 proposalId) public view returns (uint256) {
-        return proposalOptions[proposalId].length;
-    }
-
     function getOptionVoteCount(
         uint256 proposalId,
         uint256 optionIndex
     ) public view returns (uint256) {
-        require(proposalId < proposalsLength(), "Proposal does not exist.");
+        require(proposalId < proposals.length, "Proposal does not exist.");
         require(
             optionIndex < proposalOptions[proposalId].length,
             "Option does not exist."
@@ -392,111 +379,129 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         emit StakeReleased(user, stakeIndex, penalizeStake, amountToRelease);
     }
 
-    // 获取已结算提案的获胜选项
-    function getWinningOptionByProposal(uint proposalId) public view returns (uint) {
-        Proposal memory proposal = proposals[proposalId];
-        if (!proposal.isSettled) {
-            revert UnsettledProposal(proposalId, false);
-        }
-        return winningOptionByProposal[proposalId];
-    }
+    
 
-    // 查询已结算提案，获得的奖励或者惩罚
-    function getRewardOrPenaltyInSettledProposal(
-        uint proposalId
-    ) public view returns (int) {
-        Proposal memory proposal = proposals[proposalId];
-        bool isVote = voters[msg.sender][proposalId];
+    
 
-        if (!proposal.isSettled) {
-            revert UnsettledProposal(proposalId, false);
+    // 检查是否是只有一个选项被投递的情况
+    function isSingleOptionProposal(
+        uint256 proposalId,
+        uint winningOptionId
+    ) public view returns (bool) {
+        Proposal storage proposal = proposals[proposalId];
+        uint optionCount = proposalOptions[proposalId].length;
+        for (uint i = 0; i < optionCount; i++) {
+            if (
+                i != winningOptionId &&
+                proposalOptions[proposalId][i].voteCount > 0
+            ) {
+                return false;
+            }
         }
-        if (!isVote) {
-            revert UserNotVoted();
-        }
-        return rewardOrPenaltyInSettledProposal[proposalId][msg.sender];
+        return true;
     }
 
     function settleRewards(
         uint256 proposalId,
         uint256 winningOptionId
     ) public onlyOwner nonReentrant {
-        uint totalStake = 0;
         Proposal storage proposal = proposals[proposalId];
-        // 计算该提案所有选项质押的总金额
-        uint optionCount = getOptionsCount(proposalId);
-
-        for (uint i = 0; i < optionCount; i++) {
-            totalStake += getOptionVoteCount(proposalId, i);
-        }
-        // 计算抽取5%平台手续费和5%提案发起人奖励后的提案代币数量
-        // uint platformFee = (totalStake * 5) / 100;
-        // uint proposalPromoterReward = (totalStake * 5) / 100;
-        // uint totalFee = platformFee + proposalPromoterReward;
-        uint totalStakeExtractFee = (totalStake * 90) / 100;
-        uint totalVotesForWinningOption = proposalOptions[proposalId][
-            winningOptionId
-        ].voteCount;
-        uint totalVotesForFailedOption = totalStake -
-            totalVotesForWinningOption;
-
         require(
             !proposal.active,
             "Proposal must be inactive to settle rewards."
         );
         require(!proposal.isSettled, "Rewards already settled");
 
-        require(totalVotesForWinningOption > 0, "No votes for winning option");
-        // 提案发起者余额增加提案质押的5%奖励
-        // balances[proposal.proposer] += proposalPromoterReward;
-        balances[proposal.proposer] += (totalStake * 5) / 100;
+        // 检查只有一个选项被选择的情况
+        bool isSingleOptionStatus = isSingleOptionProposal(
+            proposalId,
+            winningOptionId
+        );
 
-        // 记录提案获胜的选项
-        winningOptionByProposal[proposalId] = winningOptionId;
-        // 假设的奖池总金额和平台收取比例
-        for (
-            uint256 i = 0;
-            i < voterAddressesByProposal[proposalId].length;
-            i++
-        ) {
-            // 获取投票者地址、选项ID和投票数
-            address voter = voterAddressesByProposal[proposalId][i];
-            uint256 optionId = optionIdsByProposal[proposalId][i];
-            uint256 voteCount = voteCountsByProposal[proposalId][i];
+        if (isSingleOptionStatus) {
+            // 原路退回所有的质押
+            for (
+                uint256 i = 0;
+                i < voterAddressesByProposal[winningOptionId].length;
+                i++
+            ) {
+                // 获取投票者地址、选项ID和投票数
+                address voter = voterAddressesByProposal[proposalId][i];
+                uint256 voteCount = voteCountsByProposal[proposalId][i];
+                usedVotingRights[voter] -= voteCount;
+            }
+            emit ProposalRefunded(proposalId, winningOptionId);
+        } else {
+            uint totalStake;
+            uint optionCount = proposalOptions[proposalId].length;
+            // 计算该提案所有选项质押的总金额
+            for (uint i = 0; i < optionCount; i++) {
+                totalStake += getOptionVoteCount(proposalId, i);
+            }
+            // 提案发起者获得提案质押的5%奖励
+            balances[proposal.proposer] += (totalStake * 5) / 100;
 
-            require(
-                usedVotingRights[voter] >= voteCount,
-                "Not enough locked voting rights"
-            );
+            // 计算抽取5%平台手续费和5%提案发起人奖励后的提案代币数量
+            uint totalStakeExtractFee = (totalStake * 90) / 100;
 
-            usedVotingRights[voter] -= voteCount;
+            //计算每个投票用户的奖励或惩罚
+            for (
+                uint256 i = 0;
+                i < voterAddressesByProposal[proposalId].length;
+                i++
+            ) {
+                // 获取投票者地址、选项ID和投票数
+                address voter = voterAddressesByProposal[proposalId][i];
+                uint256 optionId = optionIdsByProposal[proposalId][i];
+                uint256 voteCount = voteCountsByProposal[proposalId][i];
+                // 当前选项获得的质押
+                uint optionVoteCount = proposalOptions[proposalId][optionId]
+                    .voteCount;
 
-            if (optionId == winningOptionId) {
-                // 按照投票人质押的比例分配奖励
-                uint256 voterReward = (voteCount * totalStakeExtractFee) /
-                    totalVotesForWinningOption;
-                // 计算获利部分金额
-                voterReward -= voteCount;
-                // 计算并分配奖励给赢家
-                balances[voter] += voterReward; // 更新赢家余额
-                // 记录获得的奖励
-                rewardOrPenaltyInSettledProposal[proposalId][
-                    voter
-                ] = int256(voterReward);
-                emit RewardDistributed(voter, proposalId, voterReward, true);
-            } else {
-                uint256 voterPunish = (voteCount * totalStakeExtractFee) /
-                    totalVotesForFailedOption;
-                // 计算惩罚部分金额
-                voterPunish -= voteCount;
-                balances[voter] -= voterPunish; // 更新输家余额
-                // 记录获得的惩罚
-                rewardOrPenaltyInSettledProposal[proposalId][
-                    voter
-                ] = int256(voterPunish) * -1;
-                emit RewardDistributed(voter, proposalId, voterPunish, false);
+                usedVotingRights[voter] -= voteCount;
+
+                if (optionId == winningOptionId) {
+                    // 按照投票人质押的比例分配奖励
+                    uint voterReward = (voteCount * totalStakeExtractFee) /
+                        optionVoteCount;
+                    // 计算获利部分金额
+                    voterReward -= voteCount;
+                    balances[voter] += voterReward; // 更新赢家余额
+                    // 记录获得的奖励
+                    rewardOrPenaltyInSettledProposal[proposalId][
+                        voter
+                    ] = int256(voterReward);
+                    emit RewardDistributed(
+                        voter,
+                        proposalId,
+                        voterReward,
+                        true
+                    );
+                } else {
+                    uint256 voterPunish = (voteCount * totalStakeExtractFee) /
+                        optionVoteCount;
+                    // 计算惩罚金额
+                    if (balances[voter] <= voterPunish) {
+                        balances[voter] = 0;
+                    } else {
+                        balances[voter] -= voterPunish; 
+                    }
+
+                    // 记录获得的惩罚
+                    rewardOrPenaltyInSettledProposal[proposalId][voter] =
+                        int256(voterPunish) *
+                        -1;
+                    emit RewardDistributed(
+                        voter,
+                        proposalId,
+                        voterPunish,
+                        false
+                    );
+                }
             }
         }
+        // 记录提案获胜的选项
+        winningOptionByProposal[proposalId] = winningOptionId;
         // 更新提案状态
         proposal.isSettled = true;
     }

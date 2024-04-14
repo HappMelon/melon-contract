@@ -105,19 +105,20 @@ interface IProposalLogic {
         bool isWinner
     );
     event ExchangePoints(address indexed user, uint256 points);
+    // 提案原路退回质押金额
+    event ProposalRefunded(uint256 indexed proposalId, uint256 winningOptionId);
 
     // 错误
     error UnsettledProposal(uint proposalId, bool isSettle);
     error UserNotVoted();
-    // 获取已结算提案的获胜选项
-    function getWinningOptionByProposal(uint proposalId) external view returns (uint);
-    // 获取用户在结算提案中获得的奖励或者惩罚
-    function getRewardOrPenaltyInSettledProposal(uint proposalId) external view returns (int);
+    
 
+    // 检查是否是只有一个选项被投递的情况
+    function isSingleOptionProposal(uint256 proposalId, uint winningOptionId) external view returns (bool);
     // 积分兑换
     function exchangePoints(uint256 amount) external;
 
-    function getUserBalance(address) external view returns (uint256);
+    // function getUserBalance(address) external view returns (uint256);
 
     function getUserVotingRights(
         address userAddress
@@ -182,14 +183,6 @@ interface IProposalLogic {
         external
         view
         returns (uint256[] memory, uint256[] memory, uint256[] memory);
-
-    // Get the length of the proposals array
-    function proposalsLength() external view returns (uint256);
-
-    // Get the number of options for a proposal
-    function getOptionsCount(
-        uint256 proposalId
-    ) external view returns (uint256);
 
     // Get the vote count for an option in a proposal
     function getOptionVoteCount(
