@@ -7,8 +7,8 @@
 
 # 已经部署合约地址：
 1. zksync testnet
-flareTokenContract was deployed to 0x790B791D6D449B71B93006f3ca6077E0847Abf2C
-proposalLogicContract was deployed to 0x9C9294db253039297149c9A46792a6389117ED9F
+flareTokenContract was deployed to 0xdF8c5bB8F94D56555592C379C8a0c97051537a7B
+proposalLogicContract was deployed to 0x7c056e2b92A3BCE893dAc106ADcC64C3fc11937F
 2. sepolia testnet
 FlareTokenModule#FlareToken - 0xBefF43B8AFF903D21293B229104f138FC9dF83Ce
 ProposalLogicModule#ProposalLogic - 0xB6cBBbbF49664c749Fc519d7d03194C22645CC31

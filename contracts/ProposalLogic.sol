@@ -49,6 +49,10 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         myToken = _myToken;
     }
 
+    function getOptionsCount(uint256 proposalId) public view returns (uint256) {
+        return proposalOptions[proposalId].length;
+    }
+
     // 获取用户投票的金额
     function getUserVotingRights(
         address userAddress
@@ -379,10 +383,6 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         emit StakeReleased(user, stakeIndex, penalizeStake, amountToRelease);
     }
 
-    
-
-    
-
     // 检查是否是只有一个选项被投递的情况
     function isSingleOptionProposal(
         uint256 proposalId,
@@ -484,7 +484,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
                     if (balances[voter] <= voterPunish) {
                         balances[voter] = 0;
                     } else {
-                        balances[voter] -= voterPunish; 
+                        balances[voter] -= voterPunish;
                     }
 
                     // 记录获得的惩罚

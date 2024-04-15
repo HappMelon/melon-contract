@@ -111,10 +111,16 @@ interface IProposalLogic {
     // 错误
     error UnsettledProposal(uint proposalId, bool isSettle);
     error UserNotVoted();
-    
+
+    // 获取提案的选项数量
+    function getOptionsCount(uint256 proposalId) external view returns (uint256);
 
     // 检查是否是只有一个选项被投递的情况
-    function isSingleOptionProposal(uint256 proposalId, uint winningOptionId) external view returns (bool);
+    function isSingleOptionProposal(
+        uint256 proposalId,
+        uint winningOptionId
+    ) external view returns (bool);
+
     // 积分兑换
     function exchangePoints(uint256 amount) external;
 
