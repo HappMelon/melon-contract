@@ -478,15 +478,9 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
                         true
                     );
                 } else {
-                    uint256 voterPunish = (voteCount * totalStakeExtractFee) /
-                        optionVoteCount;
-                    // 计算惩罚金额
-                    if (balances[voter] <= voterPunish) {
-                        balances[voter] = 0;
-                    } else {
-                        balances[voter] -= voterPunish;
-                    }
-
+                    uint256 voterPunish = voteCount;
+                    // 计算惩罚金额                   
+                    balances[voter] -= voterPunish;
                     // 记录获得的惩罚
                     rewardOrPenaltyInSettledProposal[proposalId][voter] =
                         int256(voterPunish) *

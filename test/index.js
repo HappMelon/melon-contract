@@ -123,7 +123,7 @@ describe("Test", function () {
     // 测试查询用户投票后结算获得的奖励或者惩罚
     let rewardAmount = await proposalLogic
       .connect(accountA)
-      .rewardOrPenaltyInSettledProposal(0n, accountA.address);
+      .rewardOrPenaltyInSettledProposal(0n, accountC.address);
     console.log("rewardAmount", ethers.formatEther(rewardAmount));
   });
 });
