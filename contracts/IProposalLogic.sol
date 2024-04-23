@@ -82,12 +82,12 @@ interface IProposalLogic {
     );
     event ProposalStatusChanged(uint256 proposalId, bool isActive);
     event ProposalEndTime(uint256 _proposalId, uint256 endTime);
-    event ProposalForUser(
-        address indexed userAddress,
-        uint256 indexed proposalId,
-        string proposalDescription,
-        uint256 stakeAmount,
-        string[] optionDescriptions,
+    event CreateProposal(
+        address indexed user,
+        uint256 indexed id,
+        string description,
+        uint256 amount,
+        string[] options,
         uint256 endtime
     );
     event StakeReleased(
@@ -124,7 +124,6 @@ interface IProposalLogic {
     // 积分兑换
     function exchangePoints(uint256 amount) external;
 
-    // function getUserBalance(address) external view returns (uint256);
 
     function getUserVotingRights(
         address userAddress
@@ -132,26 +131,16 @@ interface IProposalLogic {
 
     function deposit(uint256 amount) external;
 
-    // Submit a proposal for review
-    function submitProposalForReview(uint256 amount) external returns (uint256);
 
-    // Create a proposal with multiple options
-    function createProposalWithOptions(
-        string memory proposalDescription,
-        string[] memory optionDescriptions,
-        uint amount,
-        uint256 endtime
-    ) external returns (uint256);
 
     // Process a user's stake in a proposal
-    function processUserStakedProposal(
-        address userAddress,
-        string memory proposalDescription,
-        uint256 stakeAmount,
-        string[] memory optionDescriptions,
-        uint256 stakeIndex,
+    function createProposal(
+        address user,
+        string memory description,
+        uint256 amount,
+        string[] memory options,
         uint256 endtime
-    ) external returns (uint256);
+    ) external;
 
     // Withdraw from the contract
     function withdraw(uint256 _amount) external;
@@ -196,15 +185,6 @@ interface IProposalLogic {
         uint256 optionIndex
     ) external view returns (uint256);
 
-    // Get the ID of the current proposal
-    function getCurrentProposalId() external view returns (uint256);
-
-    // Process a stake release
-    function handleStakeRelease(
-        address user,
-        uint256 stakeIndex,
-        bool penalizeStake
-    ) external;
 
     // Settle rewards
     function settleRewards(

@@ -13,11 +13,15 @@ describe("Test", function () {
     [accountA, accountB, accountC, accountD, proposalCreatorAccount] =
       await ethers.getSigners();
 
-    flareContract = await ethers.deployContract("FlareToken", [], accountA);
+    flareContract = await ethers.deployContract(
+      "FlareToken",
+      [],
+      proposalCreatorAccount
+    );
     proposalLogic = await ethers.deployContract(
       "ProposalLogic",
       [flareContract.target],
-      accountA
+      proposalCreatorAccount
     );
 
     // 打印地址
@@ -61,12 +65,17 @@ describe("Test", function () {
     //  创建提案 质押100代币 截止时间1天
     await proposalLogic
       .connect(proposalCreatorAccount)
-      .createProposalWithOptions(
+      .createProposal(
+        accountA.address,
         "this a proposal",
+        100n,
         ["option1", "option2"],
-        ethers.parseEther("100"),
-        1n
+        7n
       );
+    let optionCount = await proposalLogic.getOptionsCount(0n);
+
+    console.log("optionCount", optionCount);
+
     let proposal = await proposalLogic.proposals(0);
     // console.log("proposal", proposal);
     // 每个账户往合约中存10代币

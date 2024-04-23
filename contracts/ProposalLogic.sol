@@ -13,34 +13,21 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
     uint256 constant MAX_UINT256 = type(uint256).max;
     address public myToken; // 用于投票的代币地址
     using Counters for Counters.Counter;
-    Counters.Counter private _proposalIds;
     Counters.Counter private _UserStakeIdCounter; // 用于跟踪每次质押的计数器
-    address[] public UserStakerAddresses; // 质押者地址数组
-    uint256[] public UserSstakeAmounts;
     Proposal[] public proposals; // 提案数组
 
-    // mapping(uint256 => uint256) public votingEndTimes; // 投票结束时间
     mapping(address => uint256) public balances;
-    // mapping(uint256 => address[]) public proposalVoters;
     mapping(address => VoteRecord[]) public userVotingHistory; // 用户的投票历史记录映射
-    // mapping(address => Stake[]) public stakesForUser;
     mapping(uint256 => Option[]) public proposalOptions; // 提案ID到选项数组的映射
     mapping(address => mapping(uint256 => bool)) public voters;
-    // 用户发起提案时的金额
-    mapping(address => uint256) public proposalTokenDeposits;
-    // 用户投票的金额
-    mapping(address => uint256) public usedVotingRights;
-    // mapping(address => mapping(uint256 => uint256)) public votingRecords;
-    // mapping(address => mapping(uint256 => uint256)) public added_proposal;
+    mapping(address => uint256) public proposalTokenDeposits; // 用户发起提案时的金额
+    mapping(address => uint256) public usedVotingRights; // 用户投票的金额
     mapping(uint256 => address[]) public voterAddressesByProposal;
     mapping(uint256 => uint256[]) public optionIdsByProposal;
     mapping(uint256 => uint256[]) public voteCountsByProposal;
     mapping(address => mapping(uint256 => uint256)) public voterIndexInProposal;
-    // 记录已结算提案的获胜选项
-    mapping(uint256 => uint) public winningOptionByProposal;
-    // 记录结算提案用户的奖励或者惩罚
-    mapping(uint => mapping(address => int))
-        public rewardOrPenaltyInSettledProposal;
+    mapping(uint256 => uint) public winningOptionByProposal; // 记录已结算提案的获胜选项
+    mapping(uint => mapping(address => int)) public rewardOrPenaltyInSettledProposal; // 记录结算提案用户的奖励或者惩罚
 
     // 修饰符
 
@@ -70,136 +57,39 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         emit Deposited(msg.sender, amount);
     }
 
-    function submitProposalForReview(uint256 amount) public returns (uint256) {
-        require(balances[msg.sender] >= amount, "Insufficient balance");
-        require(
-            balances[msg.sender] - usedVotingRights[msg.sender] >= amount,
-            "Insufficient balance"
-        );
-        uint256 unlockTime = block.timestamp + 7 days; // 假设7天后解锁
-
-        uint256 User_stakeIndex = _UserStakeIdCounter.current();
-        _UserStakeIdCounter.increment(); // 自动增加质押计数器
-
-        // 根据amount的值设置isWagered
-        bool isWagered;
-        if (amount > 0) {
-            isWagered = true;
-            proposalTokenDeposits[msg.sender] += amount;
-        } else {
-            isWagered = false;
-        }
-
-        UserStakerAddresses.push(msg.sender);
-        UserSstakeAmounts.push(amount);
-        emit DepositForProposal(
-            msg.sender,
-            amount,
-            isWagered,
-            unlockTime,
-            User_stakeIndex
-        );
-        return User_stakeIndex; // 返回新创建的质押索引， 用于标记。。。 不等于提案id
-    }
-
-    function createProposalWithOptions(
-        string memory proposalDescription,
-        string[] memory optionDescriptions,
-        uint amount,
+    function createProposal(
+        address user,
+        string memory description,
+        uint256 amount,
+        string[] memory options,
         uint256 endtime
-    ) public returns (uint256) {
-        // 创建提案
-        uint256 proposalId = _proposalIds.current(); // 获取新的提案ID
-        _proposalIds.increment(); // 增加提案ID
-
-        bool isWagered = amount > 0;
-
-        uint256 unlockTime = block.timestamp + (endtime * 1 days); // 使用endtime * 1 days计算
-
+    ) public onlyOwner{
+        uint256 unlockTime = block.timestamp + (endtime * 1 days);
+        uint256 newId = proposals.length; // 获取新的提案ID
         proposals.push(
             Proposal({
-                proposer: msg.sender,
-                description: proposalDescription,
+                proposer: user,
+                description: description,
                 stakeAmount: amount,
                 active: true,
                 isSettled: false,
-                isWagered: isWagered,
+                isWagered: amount > 0,
                 endTime: unlockTime
             })
         );
-
-        // 为提案添加选项
-        for (uint i = 0; i < optionDescriptions.length; i++) {
-            proposalOptions[proposalId].push(
-                Option({description: optionDescriptions[i], voteCount: 0})
+        for (uint256 i = 0; i < options.length; i++) {
+            proposalOptions[newId].push(
+                Option({description: options[i], voteCount: 0})
             );
         }
-        // 触发事件
-        emit ProposalAndOptionsSubmitted(
-            msg.sender,
-            proposalId,
-            proposalDescription,
-            optionDescriptions,
+        emit CreateProposal(
+            user,
+            newId,
+            description,
+            amount,
+            options,
             unlockTime
         );
-
-        return proposalId; // 返回新创建的提案ID
-    }
-
-    function processUserStakedProposal(
-        address userAddress,
-        string memory proposalDescription,
-        uint256 stakeAmount,
-        string[] memory optionDescriptions,
-        uint256 stakeIndex,
-        uint256 endtime
-    ) public onlyOwner returns (uint256) {
-        address UserAddress = UserStakerAddresses[stakeIndex];
-        uint256 UserAmount = UserSstakeAmounts[stakeIndex];
-        require(UserAddress == userAddress, "the address is not same");
-        require(
-            stakeAmount == UserAmount,
-            "Staked amount does not match or insufficient"
-        );
-
-        uint256 unlockTime = block.timestamp + (endtime * 1 days); // 使用endtime * 1 days计算
-
-        bool isWagered;
-        if (stakeAmount > 0) {
-            isWagered = true;
-        } else {
-            isWagered = false;
-        }
-        proposals.push(
-            Proposal({
-                proposer: userAddress,
-                description: proposalDescription,
-                stakeAmount: stakeAmount,
-                active: true,
-                isSettled: false,
-                isWagered: isWagered,
-                endTime: unlockTime
-            })
-        );
-
-        uint256 proposalId = _proposalIds.current(); // 获取新的提案ID
-        _proposalIds.increment(); // 增加提案ID
-
-        for (uint256 i = 0; i < optionDescriptions.length; i++) {
-            proposalOptions[proposalId].push(
-                Option({description: optionDescriptions[i], voteCount: 0})
-            );
-        }
-        emit ProposalForUser(
-            userAddress,
-            proposalId,
-            proposalDescription,
-            stakeAmount,
-            optionDescriptions,
-            unlockTime
-        );
-
-        return proposalId;
     }
 
     function exchangePoints(uint256 points) public {
@@ -342,45 +232,6 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
             "Option does not exist."
         );
         return proposalOptions[proposalId][optionIndex].voteCount;
-    }
-
-    function getCurrentProposalId() public view returns (uint256) {
-        uint256 proposalArrayLength = proposals.length;
-        uint256 currentCounterValue = _proposalIds.current();
-
-        if (proposalArrayLength == currentCounterValue) {
-            // 如果数组长度和计数器的值相等，返回当前的提案ID
-            return currentCounterValue - 1;
-        } else {
-            // 如果不相等，可以返回一个错误标识或默认值
-            return MAX_UINT256; // 例如返回一个最大值表示错误
-        }
-    }
-
-    function handleStakeRelease(
-        address user,
-        uint256 stakeIndex,
-        bool penalizeStake
-    ) public onlyOwner {
-        // 确保索引在范围内
-        require(
-            stakeIndex < UserSstakeAmounts.length,
-            "Stake index out of bounds"
-        );
-        uint256 amountToRelease = UserSstakeAmounts[stakeIndex];
-        proposalTokenDeposits[user] -= amountToRelease;
-
-        // 如果需要罚款，则计算并扣除罚款
-        if (penalizeStake) {
-            uint256 penaltyAmount = (amountToRelease * 10) / 100; // 计算10%罚款
-            amountToRelease -= penaltyAmount; // 减去罚款
-            balances[user] -= penaltyAmount; // 从用户余额扣除罚款
-        }
-        // 清除处理过的质押金额
-        UserSstakeAmounts[stakeIndex] = 0;
-
-        // 触发事件，通知质押已被释放
-        emit StakeReleased(user, stakeIndex, penalizeStake, amountToRelease);
     }
 
     // 检查是否是只有一个选项被投递的情况
