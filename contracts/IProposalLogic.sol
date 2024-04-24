@@ -18,19 +18,11 @@ interface IProposalLogic {
         string description; // 选项描述
         uint256 voteCount; // 投票计数
     }
-    // 质押
-    struct Stake {
-        uint256 amount; // 质押的金额
-        uint256 unlockTime; // 资金解锁的时间
-        address staker; // 质押者地址
-        bool isWagered; //是否对赌
+    struct Vote{
+        address user; 
+        uint256 amount; 
     }
-    // 投票记录
-    struct VoteRecord {
-        uint256 proposalId; // 提案ID
-        uint256 optionId; // 用户选择的选项ID
-        uint256 amount; // 投票数量
-    }
+
     //事件
     event Received(address caller, uint amount, string message);
     event Deposited(address indexed user, uint amount);
@@ -111,6 +103,7 @@ interface IProposalLogic {
     // 错误
     error UnsettledProposal(uint proposalId, bool isSettle);
     error UserNotVoted();
+    error InsufficientBalance(address user, uint availableBalance);
 
     // 获取提案的选项数量
     function getOptionsCount(uint256 proposalId) external view returns (uint256);
@@ -124,14 +117,7 @@ interface IProposalLogic {
     // 积分兑换
     function exchangePoints(uint256 amount) external;
 
-
-    function getUserVotingRights(
-        address userAddress
-    ) external view returns (uint256);
-
     function deposit(uint256 amount) external;
-
-
 
     // Process a user's stake in a proposal
     function createProposal(
@@ -146,7 +132,7 @@ interface IProposalLogic {
     function withdraw(uint256 _amount) external;
 
     // Get the available balance that can be withdrawn
-    function getAvailableWithdrawBalance(
+    function getAvailableBalance(
         address user
     ) external view returns (uint256);
 
@@ -162,30 +148,11 @@ interface IProposalLogic {
         uint256 _amount
     ) external;
 
-    // Get the contract's balance
-    function getContractBalance() external view returns (uint);
-
     // Pause the contract
     function pause() external;
 
     // Unpause the contract
     function unpause() external;
-
-    // Get a user's voting history
-    function getUserVotingHistory(
-        address _user
-    )
-        external
-        view
-        returns (uint256[] memory, uint256[] memory, uint256[] memory);
-
-    // Get the vote count for an option in a proposal
-    function getOptionVoteCount(
-        uint256 proposalId,
-        uint256 optionIndex
-    ) external view returns (uint256);
-
-
     // Settle rewards
     function settleRewards(
         uint256 proposalId,

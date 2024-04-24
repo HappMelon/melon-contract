@@ -24,10 +24,9 @@ describe("Test", function () {
       proposalCreatorAccount
     );
 
-    // 打印地址
     console.log("flareContract: ", flareContract.target);
     console.log("proposalLogic: ", proposalLogic.target);
-    // 铸造100代币
+    // Cast 100 tokens per account
     let mintAmount = ethers.parseEther("100");
     await flareContract.mint(accountA.address, mintAmount);
     await flareContract.mint(accountB.address, mintAmount);
@@ -35,7 +34,6 @@ describe("Test", function () {
     await flareContract.mint(accountD.address, mintAmount);
     await flareContract.mint(proposalCreatorAccount.address, mintAmount);
 
-    // 授权
     await flareContract
       .connect(accountA)
       .approve(proposalLogic.target, ethers.parseEther("100"));
@@ -52,49 +50,55 @@ describe("Test", function () {
       .connect(proposalCreatorAccount)
       .approve(proposalLogic.target, ethers.parseEther("100"));
   });
-  // 测试积分兑换
-  // it("Test redemption of points", async function () {
-  //   let points = ethers.parseEther("5");
-  //   await proposalLogic.deposit(ethers.parseEther("100"));
-  //   await proposalLogic.exchangePoints(points);
-  //   let balance = await proposalLogic.balances(accountA.address);
-  //   expect(balance).to.equal(points + ethers.parseEther("100"));
-  // });
-  // 测试提交提案和结算胜利的选项
+
+  // Test point redemption
+  it("Test redemption of points", async function () {
+    let points = ethers.parseEther("5");
+    await proposalLogic.connect(accountA).deposit(ethers.parseEther("100"));
+    await proposalLogic.connect(accountA).exchangePoints(points);
+    let balance = await proposalLogic.balances(accountA.address);
+    expect(balance).to.equal(points + ethers.parseEther("100"));
+  });
+
+  // Options for testing proposal submission and settlement victory
   it("Test proposal settlement victory option logic", async function () {
-    //  创建提案 质押100代币 截止时间1天
+    // Each account deposits 50 tokens into the contract
+    await proposalLogic.connect(accountA).deposit(ethers.parseEther("50"));
+    await proposalLogic.connect(accountB).deposit(ethers.parseEther("50"));
+    await proposalLogic.connect(accountC).deposit(ethers.parseEther("50"));
+    await proposalLogic.connect(accountD).deposit(ethers.parseEther("50"));
+    let balance = await flareContract.balanceOf(proposalLogic.target);
+    console.log("balance", ethers.formatEther(balance));
+    //  Deadline for creating proposal pledge of 5 tokens: 7 day
     await proposalLogic
       .connect(proposalCreatorAccount)
       .createProposal(
         accountA.address,
         "this a proposal",
-        100n,
+        ethers.parseEther("5"),
         ["option1", "option2"],
         7n
       );
-    let optionCount = await proposalLogic.getOptionsCount(0n);
+    // Determine whether the pledge is successful
+    let proposalDepositAccountA = await proposalLogic.proposalDeposit(
+      accountA.address
+    );
+    console.log(
+      "proposalDepositAccountA",
+      ethers.formatEther(proposalDepositAccountA)
+    );
 
-    console.log("optionCount", optionCount);
-
-    let proposal = await proposalLogic.proposals(0);
-    // console.log("proposal", proposal);
-    // 每个账户往合约中存10代币
-    await proposalLogic.connect(accountA).deposit(ethers.parseEther("10"));
-    await proposalLogic.connect(accountB).deposit(ethers.parseEther("10"));
-    await proposalLogic.connect(accountC).deposit(ethers.parseEther("10"));
-    await proposalLogic.connect(accountD).deposit(ethers.parseEther("10"));
-    let balance = await flareContract.balanceOf(proposalLogic.target);
-    console.log("balance", ethers.formatEther(balance));
-    // 执行投票 选项1 A质押7 B质押3 选项2 C质押4 D质押6
+    // Execute Voting Option 1 A Pledge 7 B Pledge 3
+    // Option 2 C Pledge 4 D Pledge 6
     await proposalLogic.connect(accountA).vote(0n, 0n, ethers.parseEther("7"));
     await proposalLogic.connect(accountB).vote(0n, 0n, ethers.parseEther("3"));
     await proposalLogic.connect(accountC).vote(0n, 1n, ethers.parseEther("4"));
     await proposalLogic.connect(accountD).vote(0n, 1n, ethers.parseEther("6"));
 
-    // 查询是否投票成功
+    // Check if voting was successful
     let accountDVote = await proposalLogic
       .connect(accountA)
-      .getUserVotingRights(accountD.address);
+      .votingDeposit(accountD.address);
     console.log("accountDVote", ethers.formatEther(accountDVote));
 
     let voteOption1Info = await proposalLogic.proposalOptions(0n, 0n);
@@ -102,10 +106,10 @@ describe("Test", function () {
 
     console.log("选项1得票", ethers.formatEther(voteOption1Info.voteCount));
     console.log("选项2得票", ethers.formatEther(voteOption2Info.voteCount));
-    // 结束提案
+    // End proposal
     await proposalLogic.deactivateProposal(0n);
 
-    // 假设选项1获胜
+    // Assuming Option 1 wins
     await proposalLogic.settleRewards(0n, 0n);
     let proposalCreatorBalance = await proposalLogic.balances(
       proposalCreatorAccount.address
@@ -115,7 +119,7 @@ describe("Test", function () {
     let accountCBalance = await proposalLogic.balances(accountC.address);
     let accountDBalance = await proposalLogic.balances(accountD.address);
 
-    // 提案创建者获得5%的奖励
+    // Proposal creators receive a 5% reward
     console.log(
       "proposalCreatorBalance",
       ethers.formatEther(proposalCreatorBalance)
@@ -125,11 +129,11 @@ describe("Test", function () {
     console.log("accountCBalance", ethers.formatEther(accountCBalance));
     console.log("accountDBalance", ethers.formatEther(accountDBalance));
 
-    // 测试查询提案获胜选项
+    // Test query proposal winning option
     let winOptionId = await proposalLogic.winningOptionByProposal(0n);
     console.log("winOptionId", winOptionId);
 
-    // 测试查询用户投票后结算获得的奖励或者惩罚
+    // Test and query the rewards or punishments obtained from user voting settlement
     let rewardAmount = await proposalLogic
       .connect(accountA)
       .rewardOrPenaltyInSettledProposal(0n, accountC.address);
