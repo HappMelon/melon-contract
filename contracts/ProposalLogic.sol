@@ -1,15 +1,116 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
-import "./IProposalLogic.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+// import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+// import "@openzeppelin/contracts/utils/Pausable.sol";
+// import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Counters.sol";
 
-contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
+contract ProposalLogic {
+    // 类型声明
+    // 提案
+    struct Proposal {
+        address proposer; // 提案发起人
+        uint256 stakeAmount; // 质押代币数量
+        bool active; // 提案是否活跃
+        bool isSettled; // 添加属性以跟踪提案是否已结算
+        bool isWagered;
+        uint256 endTime;
+    }
+    // 提议选项
+    struct Option {
+        string description; // 选项描述
+        uint256 voteCount; // 投票计数
+    }
+    struct Vote {
+        address user;
+        uint256 amount;
+    }
+
+    //事件
+    event Received(address caller, uint amount, string message);
+    event Deposited(address indexed user, uint amount);
+    event Withdrawn(address indexed user, uint amount);
+    event Voted(
+        address indexed _address,
+        uint256 indexed _proposalId,
+        uint256 indexed _optionId,
+        uint256 _amount
+    );
+    event ProposalAndOptionsSubmitted(
+        address indexed user,
+        uint256 indexed proposalIndex,
+        string proposalDescription,
+        string[] optionDescriptions,
+        uint256 endtime
+    );
+    event DepositForProposal(
+        address indexed staker,
+        uint256 amount,
+        bool staked,
+        uint256 unlockTime,
+        uint256 indexed stakeIndex
+    );
+    event TokensStaked(
+        address indexed user,
+        uint256 amount,
+        bool isForProposal
+    );
+    event FundsSettledForAverageQuality(
+        uint256 indexed proposalId,
+        address indexed proposer,
+        uint256 amountToReturn
+    );
+    event WithdrawalDetailed(
+        address indexed user,
+        uint256 amountWithdrawn,
+        uint256 balanceAfterWithdrawal
+    );
+    event UnlockTimeUpdated(
+        address indexed staker,
+        uint256 indexed stakeIndex,
+        uint256 newUnlockTime
+    );
+    event FundsPenalizedForNonCompliance(
+        uint256 indexed proposalId,
+        address indexed proposer,
+        uint256 penalty
+    );
+    event ProposalStatusChanged(uint256 proposalId, bool isActive);
+    event ProposalEndTime(uint256 _proposalId, uint256 endTime);
+    event CreateProposal(
+        address indexed user,
+        uint256 indexed id,
+        uint256 amount,
+        string[] options,
+        uint256 endtime
+    );
+    event StakeReleased(
+        address indexed user,
+        uint256 stakeIndex,
+        bool penalized,
+        uint256 amountReleased
+    );
+    event ProposalEnded(uint256 indexed proposalId, bool isActive);
+    event ProposalConcluded(uint256 indexed proposalId, bool isActive);
+    event RewardDistributed(
+        address indexed voter,
+        uint256 proposalId,
+        uint256 amount,
+        bool isWinner
+    );
+    event ExchangePoints(address indexed user, uint256 points);
+    // 提案原路退回质押金额
+    event ProposalRefunded(uint256 indexed proposalId, uint256 winningOptionId);
+
+    // 错误
+    error UnsettledProposal(uint proposalId, bool isSettle);
+    error UserNotVoted();
+    error InsufficientBalance(address user, uint availableBalance);
+
     // state variable
+    address public logicAddress;
     address public flareToken; // Token Address
     using Counters for Counters.Counter;
     Proposal[] public proposals; // Proposal array
@@ -26,8 +127,10 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
     // Modifier
 
     // function
-    constructor(address myToken) Ownable(msg.sender) {
-        flareToken = myToken;
+    // constructor() Ownable(msg.sender) {}
+
+    function upgrade(address newImplementation) public {
+        logicAddress = newImplementation;
     }
 
     function getOptionsCount(uint256 proposalId) public view returns (uint256) {
@@ -45,11 +148,10 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
 
     function createProposal(
         address user,
-        string memory description,
         uint256 amount,
         string[] memory options,
         uint256 endtime
-    ) public onlyOwner {
+    ) public {
         uint availableBalance = balances[user] - votingDeposit[user];
         if (availableBalance < amount) {
             revert InsufficientBalance(user, availableBalance);
@@ -62,7 +164,6 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         proposals.push(
             Proposal({
                 proposer: user,
-                description: description,
                 stakeAmount: amount,
                 active: true,
                 isSettled: false,
@@ -78,7 +179,6 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         emit CreateProposal(
             user,
             newId,
-            description,
             amount,
             options,
             unlockTime
@@ -91,7 +191,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         emit ExchangePoints(msg.sender, points);
     }
 
-    function withdraw(uint256 amount) public nonReentrant {
+    function withdraw(uint256 amount) public {
         // Ensure that users have sufficient balance to withdraw
         uint256 availableBalance = getAvailableBalance(msg.sender);
         require(
@@ -123,7 +223,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         uint256 proposalId,
         uint256 optionId,
         uint256 amount
-    ) public whenNotPaused {
+    ) public {
         require(proposalId < proposals.length, "The proposal does not exist");
         require(
             optionId < proposalOptions[proposalId].length,
@@ -165,7 +265,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
     function settleRewards(
         uint256 proposalId,
         uint256 winningOptionId
-    ) public onlyOwner nonReentrant {
+    ) public  {
         Proposal storage proposal = proposals[proposalId];
         require(
             !proposal.active,
@@ -255,7 +355,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
     }
 
     // 评价一般提案
-    function settleFundsForAverageQuality(uint256 proposalId) public onlyOwner {
+    function settleFundsForAverageQuality(uint256 proposalId) public  {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
@@ -286,7 +386,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
 
     function verifyComplianceAndExpectations(
         uint256 proposalId
-    ) public onlyOwner {
+    ) public  {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
@@ -317,7 +417,7 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
 
     function checkQualityComplianceBelowExpectations(
         uint256 proposalId
-    ) public onlyOwner {
+    ) public  {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
@@ -353,11 +453,11 @@ contract ProposalLogic is IProposalLogic, ReentrancyGuard, Pausable, Ownable {
         }
     }
 
-    function pause() public onlyOwner {
-        _pause();
-    }
+    // function pause() public  {
+    //     _pause();
+    // }
 
-    function unpause() public onlyOwner {
-        _unpause();
-    }
+    // function unpause() public  {
+    //     _unpause();
+    // }
 }
