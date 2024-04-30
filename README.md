@@ -1,33 +1,36 @@
-# 本地测试(https://hardhat.org/ignition/docs/getting-started#quick-start)
-1. `npx hardhat node`启动本地测试网，可以看到启动在（http://127.0.0.1:8545/）和相关测试账号。
-2. `npx hardhat ignition deploy ignition/modules/index.js --network localhost` 运行部署脚本，可以看到合约的地址，部署的账户默认是测试账号的第一个。
-3. 在浏览器钱包中添加该本地网络（OKX为例）。
+# [Local testing](https://hardhat.org/ignition/docs/getting-started#quick-start)
+1. `npx hardhat node` Start the local test network and you can see that the startup is in progress（ http://127.0.0.1:8545/ ）And related test accounts.
+2. `npx hardhat ignition deploy ignition/modules/index.js --network localhost` Add the local network to the browser wallet (using OKX as an example).
+3. Add the local network to the browser wallet (using OKX as an example).
 ![alt text](image.png)
-4. 根据测试需要，添加测试账户到浏览器钱包中。
+4. Add the test account to the browser wallet as needed for testing.
 
-# 已经部署合约地址：
+# Contract address has been deployed:
 1. zksync testnet
-flareTokenContract was deployed to 0x24c306FBcbEb6055e95D2405CAb625C18232bDc4
-proposalLogicContract was deployed to 0x872D31a0CEA1d9c31Ec5D8CE8ac47AfFD226D62C
+flareTokenContract---------- 0x1fEa066B6327567088C84c759b29acD653b7660d
+Implementation contract was deployed to 0xE9f416D7DDC163E3d6A4620aCe164236B54359A7
+UUPS proxy was deployed to 0x5Ff86D195677e4F9E7b4d20A904d3f48F150986a
 2. sepolia testnet
 FlareTokenModule#FlareToken - 0x65F92002b645Be9d582BBd1D5FC9C7A51AAC9bCF
 ProposalLogicModule#ProposalLogic - 0xd92B00D9D2Fc3e51828672bfA6D77D43DF35191c
 
+# UUPS Example diagram
+![alt text](image-1.png)
 
-# 测试合约
+# Test contract
 1. `npx hardhat node`
 2. `npx hardhat test --network hardhat`
 
-# 部署ZkSync测试网步骤：
-1. `npx  hardhat deploy-zksync --script index.js --network zkSyncTestnet`
-2. 前往：https://sepolia.explorer.zksync.io/ 复制代币地址，查看合约
-3. 验证（https://docs.zksync.io/build/tooling/hardhat/hardhat-zksync-verify.html#commands）
->（notes：如果要在浏览器上直接调用合约需要进行该步骤）
+# Steps for deploying ZkSync test network
+> `npx  hardhat deploy-zksync --script index.js --network zkSyncTestnet` （Error reporting： `Error in plugin @matterlabs/hardhat-zksync-deploy: Deploy function does not exist or exported invalidly.`，Temporarily abandoned）
+1. First initialization `npx hardhat run deploy/index.js` 
+> [Subsequent replacement of logical contracts](https://docs.zksync.io/build/tooling/hardhat/hardhat-zksync-upgradable.html#upgradable-examples)
+2. [view contract](https://sepolia.explorer.zksync.io/)
+3. [verify](https://docs.zksync.io/build/tooling/hardhat/hardhat-zksync-verify.html#commands)
+`npx  hardhat verify --network zkSyncTestnet  ${Contract address}  ${Construction parameters}`
 
-    1. 代币合约
-        npx  hardhat verify --network zkSyncTestnet 代币地址
-    2. 提案合约
-        npx  hardhat verify --network zkSyncTestnet  合约地址  构造参数
+
+
 # Sample Hardhat Project
 This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
 

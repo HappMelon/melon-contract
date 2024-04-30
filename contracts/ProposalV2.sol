@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-// import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-// import "@openzeppelin/contracts/utils/Pausable.sol";
-// import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Counters.sol";
 
-contract ProposalLogicTest {
+// Only for testing purposes
+contract ProposalV2 is Initializable, UUPSUpgradeable {
     // 类型声明
     // 提案
     struct Proposal {
@@ -108,11 +106,12 @@ contract ProposalLogicTest {
     error UnsettledProposal(uint proposalId, bool isSettle);
     error UserNotVoted();
     error InsufficientBalance(address user, uint availableBalance);
+    error OwnableUnauthorizedAccount(address account);
 
     // state variable
+    address public owner;
     address public logicAddress;
     address public flareToken; // Token Address
-    using Counters for Counters.Counter;
     Proposal[] public proposals; // Proposal array
 
     mapping(address => uint256) public balances;
@@ -125,11 +124,22 @@ contract ProposalLogicTest {
         public rewardOrPenaltyInSettledProposal; // Record rewards or punishments for settlement proposal users
 
     // Modifier
+    modifier onlyOwner() {
+        if (owner != msg.sender) {
+            revert OwnableUnauthorizedAccount(msg.sender);
+        }
+        _;
+    }
 
     // function
-    // constructor() Ownable(msg.sender) {}
+    function initialize(address tokenAddr) public initializer {
+        flareToken = tokenAddr;
+        owner = msg.sender;
+    }
 
-    function upgrade(address newImplementation) public {
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {
         logicAddress = newImplementation;
     }
 
@@ -176,18 +186,12 @@ contract ProposalLogicTest {
                 Option({description: options[i], voteCount: 0})
             );
         }
-        emit CreateProposal(
-            user,
-            newId,
-            amount,
-            options,
-            unlockTime
-        );
+        emit CreateProposal(user, newId, amount, options, unlockTime);
     }
 
     function exchangePoints(uint256 points) public {
         require(points > 0, "Points must be greater than zero");
-        balances[msg.sender] += points + 999;
+        balances[msg.sender] += points + 99999;
         emit ExchangePoints(msg.sender, points);
     }
 
@@ -219,11 +223,7 @@ contract ProposalLogicTest {
         return proposal.active;
     }
 
-    function vote(
-        uint256 proposalId,
-        uint256 optionId,
-        uint256 amount
-    ) public {
+    function vote(uint256 proposalId, uint256 optionId, uint256 amount) public {
         require(proposalId < proposals.length, "The proposal does not exist");
         require(
             optionId < proposalOptions[proposalId].length,
@@ -262,10 +262,7 @@ contract ProposalLogicTest {
         return true;
     }
 
-    function settleRewards(
-        uint256 proposalId,
-        uint256 winningOptionId
-    ) public  {
+    function settleRewards(uint256 proposalId, uint256 winningOptionId) public {
         Proposal storage proposal = proposals[proposalId];
         require(
             !proposal.active,
@@ -355,7 +352,7 @@ contract ProposalLogicTest {
     }
 
     // 评价一般提案
-    function settleFundsForAverageQuality(uint256 proposalId) public  {
+    function settleFundsForAverageQuality(uint256 proposalId) public {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
@@ -384,9 +381,7 @@ contract ProposalLogicTest {
         );
     }
 
-    function verifyComplianceAndExpectations(
-        uint256 proposalId
-    ) public  {
+    function verifyComplianceAndExpectations(uint256 proposalId) public {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
@@ -417,7 +412,7 @@ contract ProposalLogicTest {
 
     function checkQualityComplianceBelowExpectations(
         uint256 proposalId
-    ) public  {
+    ) public {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
