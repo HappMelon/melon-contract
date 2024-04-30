@@ -2,6 +2,9 @@ require("@nomicfoundation/hardhat-toolbox");
 require("@matterlabs/hardhat-zksync-deploy");
 require("@matterlabs/hardhat-zksync-solc");
 require("@matterlabs/hardhat-zksync-verify");
+// require('@openzeppelin/hardhat-upgrades');
+require("@matterlabs/hardhat-zksync-upgradable");
+
 const dotenv = require("dotenv");
 // Load env file
 dotenv.config();
