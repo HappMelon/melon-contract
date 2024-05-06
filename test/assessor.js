@@ -9,7 +9,7 @@ const { ethers, upgrades } = require("hardhat");
 describe("Test", function () {
   let accountA, accountB, accountC, accountD, proposalCreatorAccount;
   let juryMembersA, juryMembersB, juryMembersC, juryMembersD;
-  let flareContract, proposalProxy, assessor;
+  let melonToken, proposalProxy, assessor;
 
   this.beforeEach(async function () {
     [
@@ -24,13 +24,13 @@ describe("Test", function () {
       juryMembersD,
     ] = await ethers.getSigners();
 
-    flareContract = await ethers.deployContract("FlareToken");
+    melonToken = await ethers.deployContract("MelonToken");
 
     let proposalFactory = await ethers.getContractFactory("Proposal");
 
     proposalProxy = await upgrades.deployProxy(
       proposalFactory,
-      [flareContract.target],
+      [melonToken.target],
       {
         kind: "uups",
         initializer: "initialize",
@@ -54,26 +54,26 @@ describe("Test", function () {
     console.log(`adminAddress: ${adminAddress}`);
     // Cast 100 tokens per account
     let mintAmount = ethers.parseEther("100");
-    await flareContract.mint(accountA.address, mintAmount);
-    await flareContract.mint(accountB.address, mintAmount);
-    await flareContract.mint(accountC.address, mintAmount);
-    await flareContract.mint(accountD.address, mintAmount);
-    await flareContract.mint(proposalCreatorAccount.address, mintAmount);
+    await melonToken.mint(accountA.address, mintAmount);
+    await melonToken.mint(accountB.address, mintAmount);
+    await melonToken.mint(accountC.address, mintAmount);
+    await melonToken.mint(accountD.address, mintAmount);
+    await melonToken.mint(proposalCreatorAccount.address, mintAmount);
 
     // approve
-    await flareContract
+    await melonToken
       .connect(accountA)
       .approve(proposalProxy.target, ethers.parseEther("100"));
-    await flareContract
+    await melonToken
       .connect(accountB)
       .approve(proposalProxy.target, ethers.parseEther("100"));
-    await flareContract
+    await melonToken
       .connect(accountC)
       .approve(proposalProxy.target, ethers.parseEther("100"));
-    await flareContract
+    await melonToken
       .connect(accountD)
       .approve(proposalProxy.target, ethers.parseEther("100"));
-    await flareContract
+    await melonToken
       .connect(proposalCreatorAccount)
       .approve(proposalProxy.target, ethers.parseEther("100"));
   });

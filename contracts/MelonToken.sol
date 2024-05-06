@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 
-contract FlareToken is ERC20Permit, Ownable, ERC20Pausable {
+contract MelonToken is ERC20Permit, Ownable, ERC20Pausable {
     constructor()
-        ERC20("FlareToken", "FLR")
-        ERC20Permit("flare")
+        ERC20("Melon", "MLN")
+        ERC20Permit("MLN")
         // Ownable(msg.sender)
         Ownable()
     {}
