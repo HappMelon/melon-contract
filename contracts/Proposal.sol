@@ -131,22 +131,24 @@ contract Proposal is Initializable, UUPSUpgradeable {
     }
 
     // function
-    function initialize(address tokenAddr) public initializer {
+    function initialize(address tokenAddr) external initializer {
         flareToken = tokenAddr;
         owner = msg.sender;
     }
 
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {
-        logicAddress = newImplementation;
+    function proposalExists(uint proposalId) external view returns (bool) {
+        return proposalId < proposals.length;
     }
 
-    function getOptionsCount(uint256 proposalId) public view returns (uint256) {
+    
+
+    function getOptionsCount(
+        uint256 proposalId
+    ) external view returns (uint256) {
         return proposalOptions[proposalId].length;
     }
 
-    function deposit(uint256 amount) public {
+    function deposit(uint256 amount) external {
         require(
             IERC20(flareToken).transferFrom(msg.sender, address(this), amount),
             "Transfer failed"
@@ -156,23 +158,22 @@ contract Proposal is Initializable, UUPSUpgradeable {
     }
 
     function createProposal(
-        address user,
         uint256 amount,
         string[] memory options,
         uint256 endtime
-    ) public {
-        uint availableBalance = balances[user] - votingDeposit[user];
+    ) external {
+        uint availableBalance = balances[msg.sender] - votingDeposit[msg.sender];
         if (availableBalance < amount) {
-            revert InsufficientBalance(user, availableBalance);
+            revert InsufficientBalance(msg.sender, availableBalance);
         } else {
-            proposalDeposit[user] += amount;
+            proposalDeposit[msg.sender] += amount;
         }
 
         uint256 unlockTime = block.timestamp + (endtime * 1 days);
         uint256 newId = proposals.length;
         proposals.push(
             Proposal({
-                proposer: user,
+                proposer: msg.sender,
                 stakeAmount: amount,
                 active: true,
                 isSettled: false,
@@ -185,16 +186,16 @@ contract Proposal is Initializable, UUPSUpgradeable {
                 Option({description: options[i], voteCount: 0})
             );
         }
-        emit CreateProposal(user, newId, amount, options, unlockTime);
+        emit CreateProposal(msg.sender, newId, amount, options, unlockTime);
     }
 
-    function exchangePoints(uint256 points) public {
+    function exchangePoints(uint256 points) external {
         require(points > 0, "Points must be greater than zero");
         balances[msg.sender] += points;
         emit ExchangePoints(msg.sender, points);
     }
 
-    function withdraw(uint256 amount) public {
+    function withdraw(uint256 amount) external {
         // Ensure that users have sufficient balance to withdraw
         uint256 availableBalance = getAvailableBalance(msg.sender);
         require(
@@ -205,24 +206,22 @@ contract Proposal is Initializable, UUPSUpgradeable {
             IERC20(flareToken).transfer(msg.sender, amount),
             "Transfer failed"
         );
-        balances[msg.sender] = balances[msg.sender] - amount;
+        balances[msg.sender] -= amount;
         emit WithdrawalDetailed(msg.sender, amount, balances[msg.sender]);
     }
 
-    function getAvailableBalance(address user) public view returns (uint256) {
-        uint256 totalBalance = balances[user];
-        uint256 lockedForVoting = votingDeposit[user];
-        uint256 lockedInProposals = proposalDeposit[user];
-        uint256 totalLocked = lockedForVoting + lockedInProposals;
-        return totalBalance > totalLocked ? totalBalance - totalLocked : 0;
-    }
-
-    function getProposalStatus(uint256 proposalId) public view returns (bool) {
+    function getProposalStatus(
+        uint256 proposalId
+    ) external view returns (bool) {
         Proposal storage proposal = proposals[proposalId];
         return proposal.active;
     }
 
-    function vote(uint256 proposalId, uint256 optionId, uint256 amount) public {
+    function vote(
+        uint256 proposalId,
+        uint256 optionId,
+        uint256 amount
+    ) external {
         require(proposalId < proposals.length, "The proposal does not exist");
         require(
             optionId < proposalOptions[proposalId].length,
@@ -245,23 +244,10 @@ contract Proposal is Initializable, UUPSUpgradeable {
         emit Voted(msg.sender, proposalId, optionId, amount);
     }
 
-    function isSingleOptionProposal(
+    function settleRewards(
         uint256 proposalId,
-        uint winningOptionId
-    ) public view returns (bool) {
-        uint optionCount = proposalOptions[proposalId].length;
-        for (uint i = 0; i < optionCount; i++) {
-            if (
-                i != winningOptionId &&
-                proposalOptions[proposalId][i].voteCount > 0
-            ) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    function settleRewards(uint256 proposalId, uint256 winningOptionId) public {
+        uint256 winningOptionId
+    ) external {
         Proposal storage proposal = proposals[proposalId];
         require(
             !proposal.active,
@@ -351,7 +337,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
     }
 
     // 评价一般提案
-    function settleFundsForAverageQuality(uint256 proposalId) public {
+    function settleFundsForAverageQuality(uint256 proposalId) external {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
@@ -380,7 +366,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
         );
     }
 
-    function verifyComplianceAndExpectations(uint256 proposalId) public {
+    function verifyComplianceAndExpectations(uint256 proposalId) external {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
@@ -411,7 +397,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     function checkQualityComplianceBelowExpectations(
         uint256 proposalId
-    ) public {
+    ) external {
         require(proposalId < proposals.length, "Proposal does not exist.");
         Proposal storage proposal = proposals[proposalId];
         require(proposal.active, "Proposal is still active.");
@@ -445,6 +431,36 @@ contract Proposal is Initializable, UUPSUpgradeable {
             proposal.active = false;
             emit ProposalStatusChanged(proposalId, false);
         }
+    }
+
+    function getAvailableBalance(address user) public view returns (uint256) {
+        uint256 totalBalance = balances[user];
+        uint256 lockedForVoting = votingDeposit[user];
+        uint256 lockedInProposals = proposalDeposit[user];
+        uint256 totalLocked = lockedForVoting + lockedInProposals;
+        return totalBalance > totalLocked ? totalBalance - totalLocked : 0;
+    }
+
+    function isSingleOptionProposal(
+        uint256 proposalId,
+        uint winningOptionId
+    ) internal view returns (bool) {
+        uint optionCount = proposalOptions[proposalId].length;
+        for (uint i = 0; i < optionCount; i++) {
+            if (
+                i != winningOptionId &&
+                proposalOptions[proposalId][i].voteCount > 0
+            ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {
+        logicAddress = newImplementation;
     }
 
     // function pause() public  {
