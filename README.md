@@ -19,7 +19,7 @@ ProposalLogicModule#ProposalLogic - 0xd92B00D9D2Fc3e51828672bfA6D77D43DF35191c
 
 # Test contract
 1. `npx hardhat node`
-2. `npx hardhat test --network hardhat`
+2. `npx hardhat test ${path} --network hardhat`
 
 # Steps for deploying ZkSync test network
 > `npx  hardhat deploy-zksync --script index.js --network zkSyncTestnet` （Error reporting： `Error in plugin @matterlabs/hardhat-zksync-deploy: Deploy function does not exist or exported invalidly.`，Temporarily abandoned）

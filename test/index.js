@@ -125,8 +125,7 @@ describe("Test", function () {
     console.log("proposalProxy.balance", ethers.formatEther(balance));
 
     //  Deadline for creating proposal pledge of 5 tokens: 7 day
-    await proposalProxy.createProposal(
-      proposalCreatorAccount.address,
+    await proposalProxy.connect(proposalCreatorAccount).createProposal(
       ethers.parseEther("5"),
       ["option1", "option2"],
       7n
