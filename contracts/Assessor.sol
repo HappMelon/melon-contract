@@ -14,11 +14,22 @@ contract Assessor {
 
     address public immutable proposalAddr;
     mapping(uint => ProposalJury) public proposalJuries;
+    mapping(address => bool) public juryMembers;
+    uint public numberOfJuries;
 
     error ProposalNotFound(uint proposalId);
     error JuryHasBeenCreated(uint proposalId);
     error NoVotingRights(uint proposalId, address voter);
     error AlreadyVoted(uint proposalId, address voter);
+    error InvalidJuryMember(address juryMember);
+
+    modifier onlyJury() {
+        require(
+            juryMembers[msg.sender],
+            "Only jury members can call this function"
+        );
+        _;
+    }
 
     modifier onlyVoter(uint proposalId, address voter) {
         ProposalJury storage proposalJury = proposalJuries[proposalId];
@@ -54,13 +65,25 @@ contract Assessor {
         proposalAddr = _proposalAddr;
     }
 
+    function updateJurorStatus(bool status) external {
+        juryMembers[msg.sender] = status;
+        if (status) {
+            numberOfJuries++;
+        } else {
+            numberOfJuries--;
+        }
+    }
+
     function getVoters(
         uint proposalId
     ) external view returns (address[] memory) {
         return proposalJuries[proposalId].voters;
     }
 
-    function isVoted(uint proposalId, address voter) external view returns (bool) {
+    function isVoted(
+        uint proposalId,
+        address voter
+    ) external view returns (bool) {
         return proposalJuries[proposalId].voted[voter];
     }
 
@@ -75,6 +98,11 @@ contract Assessor {
         }
         if (!Proposal(proposalAddr).proposalExists(proposalId)) {
             revert ProposalNotFound(proposalId);
+        }
+        for (uint i = 0; i < initialVoters.length; i++) {
+            if (!isJury(initialVoters[i])) {
+                revert InvalidJuryMember(initialVoters[i]);
+            }
         }
 
         ProposalJury storage newProposalJury = proposalJuries[proposalId];
@@ -113,5 +141,9 @@ contract Assessor {
                 emit JurySuccess(proposalId);
             }
         }
+    }
+
+    function isJury(address _user) public view returns (bool) {
+        return juryMembers[_user];
     }
 }

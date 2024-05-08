@@ -26,7 +26,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
     }
 
     //事件
-    event Received(address caller, uint amount, string message);
     event Deposited(address indexed user, uint amount);
     event Withdrawn(address indexed user, uint amount);
     event Voted(
@@ -42,18 +41,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
         string[] optionDescriptions,
         uint256 endtime
     );
-    event DepositForProposal(
-        address indexed staker,
-        uint256 amount,
-        bool staked,
-        uint256 unlockTime,
-        uint256 indexed stakeIndex
-    );
-    event TokensStaked(
-        address indexed user,
-        uint256 amount,
-        bool isForProposal
-    );
     event FundsSettledForAverageQuality(
         uint256 indexed proposalId,
         address indexed proposer,
@@ -64,18 +51,14 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 amountWithdrawn,
         uint256 balanceAfterWithdrawal
     );
-    event UnlockTimeUpdated(
-        address indexed staker,
-        uint256 indexed stakeIndex,
-        uint256 newUnlockTime
-    );
+
     event FundsPenalizedForNonCompliance(
         uint256 indexed proposalId,
         address indexed proposer,
         uint256 penalty
     );
     event ProposalStatusChanged(uint256 proposalId, bool isActive);
-    event ProposalEndTime(uint256 _proposalId, uint256 endTime);
+
     event CreateProposal(
         address indexed user,
         uint256 indexed id,
@@ -83,14 +66,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
         string[] options,
         uint256 endtime
     );
-    event StakeReleased(
-        address indexed user,
-        uint256 stakeIndex,
-        bool penalized,
-        uint256 amountReleased
-    );
-    event ProposalEnded(uint256 indexed proposalId, bool isActive);
-    event ProposalConcluded(uint256 indexed proposalId, bool isActive);
     event RewardDistributed(
         address indexed voter,
         uint256 proposalId,
@@ -102,15 +77,15 @@ contract Proposal is Initializable, UUPSUpgradeable {
     event ProposalRefunded(uint256 indexed proposalId, uint256 winningOptionId);
 
     // 错误
-    error UnsettledProposal(uint proposalId, bool isSettle);
-    error UserNotVoted();
     error InsufficientBalance(address user, uint availableBalance);
     error OwnableUnauthorizedAccount(address account);
+
 
     // state variable
     address public owner;
     address public logicAddress;
-    address public flareToken; // Token Address
+    address public mlnTokenAddr; // Token Address
+
     Proposal[] public proposals; // Proposal array
 
     mapping(address => uint256) public balances;
@@ -132,15 +107,14 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     // function
     function initialize(address tokenAddr) external initializer {
-        flareToken = tokenAddr;
+        mlnTokenAddr = tokenAddr;
         owner = msg.sender;
     }
+
 
     function proposalExists(uint proposalId) external view returns (bool) {
         return proposalId < proposals.length;
     }
-
-    
 
     function getOptionsCount(
         uint256 proposalId
@@ -150,7 +124,11 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     function deposit(uint256 amount) external {
         require(
-            IERC20(flareToken).transferFrom(msg.sender, address(this), amount),
+            IERC20(mlnTokenAddr).transferFrom(
+                msg.sender,
+                address(this),
+                amount
+            ),
             "Transfer failed"
         );
         balances[msg.sender] = balances[msg.sender] + amount;
@@ -162,7 +140,8 @@ contract Proposal is Initializable, UUPSUpgradeable {
         string[] memory options,
         uint256 endtime
     ) external {
-        uint availableBalance = balances[msg.sender] - votingDeposit[msg.sender];
+        uint availableBalance = balances[msg.sender] -
+            votingDeposit[msg.sender];
         if (availableBalance < amount) {
             revert InsufficientBalance(msg.sender, availableBalance);
         } else {
@@ -203,7 +182,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
             "Not enough available balance to withdraw"
         );
         require(
-            IERC20(flareToken).transfer(msg.sender, amount),
+            IERC20(mlnTokenAddr).transfer(msg.sender, amount),
             "Transfer failed"
         );
         balances[msg.sender] -= amount;
