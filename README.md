@@ -1,12 +1,15 @@
-# Contract address has been deployed:
-## 1. zksync testnet
-1. melonTokenContract: 0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD
-2. Implementation contract was deployed to 0xb8fdBf6d11789825F2DB6B13BA90E9477aBec2c9
-3. UUPS proxy was deployed to 0xd9CBa65D921b7919Bb765FE4E79cA567A86Fb0e9
-4. proposalAddr: 0xd9CBa65D921b7919Bb765FE4E79cA567A86Fb0e9
-5. melonNft: 0x027da933c821D112A1b97EB1e5cE653cfb28768F
-6. assessor: 0xD5F5aBbafdC0c31F0747A50Df3F05F30494eFb0C
-7. juryNftSwap: 0xB7e4a92BE506A89d8E3Ef11d1F71472372f2c257
+# deployed info
+## zksync testnet
+- melonToken
+0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD
+- proposalAddr  
+0x9804B7B4d4b80F1B32728EDf0f4F24f87B2d980E
+- melonNft  
+0x027da933c821D112A1b97EB1e5cE653cfb28768F
+- assessor   
+0xD5F5aBbafdC0c31F0747A50Df3F05F30494eFb0C
+- juryNftSwap  
+0xB7e4a92BE506A89d8E3Ef11d1F71472372f2c257
 
 # Architecture diagram
 ![alt text](image-2.png)
@@ -17,7 +20,6 @@
 # Steps for deploying ZkSync test network
 > `npx  hardhat deploy-zksync --script index.js --network zkSyncTestnet` （Error reporting： `Error in plugin @matterlabs/hardhat-zksync-deploy: Deploy function does not exist or exported invalidly.`，Temporarily abandoned）
 1. First initialization `npx hardhat run deploy/index.js` 
-
 2. [view contract](https://sepolia.explorer.zksync.io/)
 3. [verify](https://docs.zksync.io/build/tooling/hardhat/hardhat-zksync-verify.html#commands)
 `npx  hardhat verify --network zkSyncTestnet  ${Contract address}  ${Construction parameters}`

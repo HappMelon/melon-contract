@@ -80,7 +80,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
     error InsufficientBalance(address user, uint availableBalance);
     error OwnableUnauthorizedAccount(address account);
 
-
     // state variable
     address public owner;
     address public logicAddress;
@@ -111,7 +110,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
         owner = msg.sender;
     }
 
-
     function proposalExists(uint proposalId) external view returns (bool) {
         return proposalId < proposals.length;
     }
@@ -139,9 +137,8 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 amount,
         string[] memory options,
         uint256 endtime
-    ) external {
-        uint availableBalance = balances[msg.sender] -
-            votingDeposit[msg.sender];
+    ) external returns (uint256) {
+        uint availableBalance = getAvailableBalance(msg.sender);
         if (availableBalance < amount) {
             revert InsufficientBalance(msg.sender, availableBalance);
         } else {
@@ -166,6 +163,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
             );
         }
         emit CreateProposal(msg.sender, newId, amount, options, unlockTime);
+        return newId;
     }
 
     function exchangePoints(uint256 points) external {
@@ -441,12 +439,4 @@ contract Proposal is Initializable, UUPSUpgradeable {
     ) internal override onlyOwner {
         logicAddress = newImplementation;
     }
-
-    // function pause() public  {
-    //     _pause();
-    // }
-
-    // function unpause() public  {
-    //     _unpause();
-    // }
 }
