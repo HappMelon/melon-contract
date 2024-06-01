@@ -4,6 +4,12 @@ secret key: 641943fa6c3fab18fed274c2b3194f0d71383ecfb9a58b2d70188e693c245510
 0xb9d47c289b8dacff0b894e385464f51e5eabdd86  
 secret key: a39de0eaa34cd3be35a7a200989437b9f672a4056298a51f086db9b634683fec
 
+# faucets guide
+1. 获取0.05 sepolia ETH
+https://www.infura.io/faucet/sepolia?_ga=2.191463465.2049402864.1717224083-318271395.1717224083
+2. 通过跨链桥转化成zk test ETH  
+https://app.txsync.io/bridge
+
 # deployed info
 ## zksync testnet
 - melonToken
