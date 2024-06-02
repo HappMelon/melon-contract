@@ -12,10 +12,10 @@ https://app.txsync.io/bridge
 
 # deployed info
 ## zksync testnet
-- melonToken
+- melonToken  
 0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD
 - proposalAddr  
-0x9804B7B4d4b80F1B32728EDf0f4F24f87B2d980E
+0x68386FaD40442a9D0C189FB087b8633dde79AF5a
 - melonNft  
 0x027da933c821D112A1b97EB1e5cE653cfb28768F
 - assessor   
