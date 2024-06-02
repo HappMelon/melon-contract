@@ -17,7 +17,6 @@ contract Assessor {
     mapping(address => bool) public juryMembers;
     uint public numberOfJuries;
 
-    error ProposalNotFound(uint proposalId);
     error JuryHasBeenCreated(uint proposalId);
     error NoVotingRights(uint proposalId, address voter);
     error AlreadyVoted(uint proposalId, address voter);
@@ -96,9 +95,7 @@ contract Assessor {
         if (proposalJuries[proposalId].minimumRequiredNumberOfVotes != 0) {
             revert JuryHasBeenCreated(proposalId);
         }
-        if (!Proposal(proposalAddr).proposalExists(proposalId)) {
-            revert ProposalNotFound(proposalId);
-        }
+      
         for (uint i = 0; i < initialVoters.length; i++) {
             if (!isJury(initialVoters[i])) {
                 revert InvalidJuryMember(initialVoters[i]);
@@ -137,7 +134,7 @@ contract Assessor {
                 proposalJury.numberOfVotesCast ==
                 proposalJury.minimumRequiredNumberOfVotes
             ) {
-                Proposal(proposalAddr).settleRewards(proposalId, option);
+                Proposal(proposalAddr).proposalSettlement(proposalId, option);
                 emit JurySuccess(proposalId);
             }
         }

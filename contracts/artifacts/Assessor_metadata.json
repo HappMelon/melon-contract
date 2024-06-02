@@ -1,6 +1,6 @@
 {
 	"compiler": {
-		"version": "0.8.25+commit.b61c2a91"
+		"version": "0.8.26+commit.8a97fa7a"
 	},
 	"language": "Solidity",
 	"output": {
@@ -35,6 +35,17 @@
 			{
 				"inputs": [
 					{
+						"internalType": "address",
+						"name": "juryMember",
+						"type": "address"
+					}
+				],
+				"name": "InvalidJuryMember",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
 						"internalType": "uint256",
 						"name": "proposalId",
 						"type": "uint256"
@@ -57,17 +68,6 @@
 					}
 				],
 				"name": "NoVotingRights",
-				"type": "error"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "uint256",
-						"name": "proposalId",
-						"type": "uint256"
-					}
-				],
-				"name": "ProposalNotFound",
 				"type": "error"
 			},
 			{
@@ -171,7 +171,82 @@
 						"type": "address[]"
 					}
 				],
-				"stateMutability": "nonpayable",
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_user",
+						"type": "address"
+					}
+				],
+				"name": "isJury",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "proposalId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "voter",
+						"type": "address"
+					}
+				],
+				"name": "isVoted",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "juryMembers",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "numberOfJuries",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
 				"type": "function"
 			},
 			{
@@ -214,6 +289,19 @@
 					}
 				],
 				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bool",
+						"name": "status",
+						"type": "bool"
+					}
+				],
+				"name": "updateJurorStatus",
+				"outputs": [],
+				"stateMutability": "nonpayable",
 				"type": "function"
 			},
 			{
@@ -335,19 +423,19 @@
 			]
 		},
 		"contracts/Assessor.sol": {
-			"keccak256": "0x01f266643f3dfe711db741c899ae0de64ced423cd9b24d7070e4417832b7a72d",
+			"keccak256": "0xf98b2a005c02d1fce8a2373e67826a1a3da666ed5c0e22aff2df8e5c5ab2f8c7",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://9d9d62bdb99c0cfd48b51c3e1f95e25840ee5d47aeeae57f1067b451fbbdf002",
-				"dweb:/ipfs/QmRi3Fm4uo5QsxPQ7SZSr4SbNszmDbiA4aKhXafonFoBMB"
+				"bzz-raw://674cad5b93aafaefaa5bb5af497651e090c3429ffea81cfa16e910aeef767ec0",
+				"dweb:/ipfs/QmXbjhxMjbEXrsyz1e7YgMeLxih7pvMYsZrZYzfbMJsHVg"
 			]
 		},
 		"contracts/Proposal.sol": {
-			"keccak256": "0x12b90fa5a6e82533ed8a7269799f6e4b5304b97df39e9e9f81ba34c89cff5881",
+			"keccak256": "0x487394ed69fc7de5082076834780cc7b3232cade9f8fffdf0ce5da297f113287",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://d6b7ed8d13cec40724081be1f9b91879ec9be04296a77a6c54beecb4d28c2689",
-				"dweb:/ipfs/Qmf7XyjYyn297EaWSD1F83wJ1AsDcujeoUSzuUczBwvGwy"
+				"bzz-raw://38210c0c53ba31c33323f2806a20c18c2a6b9525afefd2ca3b0c61c8f2a24123",
+				"dweb:/ipfs/QmbsNpwBdATiLTSpwDXosju32w4beFDtDBPFsJ1ZLyXhsp"
 			]
 		}
 	},

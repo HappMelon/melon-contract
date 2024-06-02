@@ -5,96 +5,71 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Proposal is Initializable, UUPSUpgradeable {
-    // 类型声明
-    // 提案
-    struct Proposal {
-        address proposer; // 提案发起人
-        uint256 stakeAmount; // 质押代币数量
-        bool active; // 提案是否活跃
-        bool isSettled; // 添加属性以跟踪提案是否已结算
-        bool isWagered;
-        uint256 endTime;
-    }
-    // 提议选项
     struct Option {
-        string description; // 选项描述
-        uint256 voteCount; // 投票计数
+        string desc;
+        uint256 count;
     }
-    struct Vote {
+
+    struct ProposalInfo {
+        address founder;
+        Option[] options;
+    }
+
+    struct VoteInfo {
         address user;
         uint256 amount;
     }
 
     //事件
-    event Deposited(address indexed user, uint amount);
-    event Withdrawn(address indexed user, uint amount);
+    event Deposited(address indexed user, uint256 amount);
+
     event Voted(
         address indexed _address,
         uint256 indexed _proposalId,
         uint256 indexed _optionId,
         uint256 _amount
     );
-    event ProposalAndOptionsSubmitted(
-        address indexed user,
-        uint256 indexed proposalIndex,
-        string proposalDescription,
-        string[] optionDescriptions,
-        uint256 endtime
-    );
-    event FundsSettledForAverageQuality(
-        uint256 indexed proposalId,
-        address indexed proposer,
-        uint256 amountToReturn
-    );
-    event WithdrawalDetailed(
-        address indexed user,
-        uint256 amountWithdrawn,
-        uint256 balanceAfterWithdrawal
-    );
 
-    event FundsPenalizedForNonCompliance(
-        uint256 indexed proposalId,
-        address indexed proposer,
-        uint256 penalty
-    );
-    event ProposalStatusChanged(uint256 proposalId, bool isActive);
+    event Withdraw(address indexed user, uint256 amount, uint256 balance);
 
     event CreateProposal(
-        address indexed user,
+        address indexed founder,
         uint256 indexed id,
-        uint256 amount,
-        string[] options,
-        uint256 endtime
+        string[] options
     );
-    event RewardDistributed(
+    event ProposalSettlement(
         address indexed voter,
         uint256 proposalId,
-        uint256 amount,
-        bool isWinner
+        int256 amount
     );
-    event ExchangePoints(address indexed user, uint256 points);
-    // 提案原路退回质押金额
-    event ProposalRefunded(uint256 indexed proposalId, uint256 winningOptionId);
 
-    // 错误
-    error InsufficientBalance(address user, uint availableBalance);
+    event ExchangePoints(address indexed user, uint256 points);
+
+    event ProposalRefunded(uint256 indexed proposalId, uint256 winOptionId);
+
+    error InsufficientBalance(address user, uint256 availableBalance);
+
     error OwnableUnauthorizedAccount(address account);
 
     // state variable
     address public owner;
+
     address public logicAddress;
+
     address public mlnTokenAddr; // Token Address
 
-    Proposal[] public proposals; // Proposal array
+    ProposalInfo[] public proposalInfos; // Proposal array
 
     mapping(address => uint256) public balances;
-    mapping(uint256 => Option[]) public proposalOptions; // Proposal options
-    mapping(address => uint256) public proposalDeposit; // The amount at which the user initiates a proposal
-    mapping(address => uint256) public votingDeposit; // The amount voted by the user
-    mapping(uint => mapping(uint => Vote[])) public votingRecordsforProposals;
-    mapping(uint256 => uint) public winningOptionByProposal; // Record the winning options for settled proposals
-    mapping(uint => mapping(address => int))
-        public rewardOrPenaltyInSettledProposal; // Record rewards or punishments for settlement proposal users
+
+    mapping(address => uint256) public votingLock; // The amount voted by the user
+
+    mapping(uint256 => mapping(uint256 => VoteInfo[]))
+        public proposalVotingSituation;
+
+    mapping(uint256 => uint256) public proposalWinningOption; // Record the winning options for settled proposals
+
+    mapping(uint256 => mapping(address => int256)) public userProposalResults; // Record rewards or punishments for settlement proposal users
 
     // Modifier
     modifier onlyOwner() {
@@ -110,17 +85,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
         owner = msg.sender;
     }
 
-    function proposalExists(uint proposalId) external view returns (bool) {
-        return proposalId < proposals.length;
-    }
-
-    function getOptionsCount(
-        uint256 proposalId
-    ) external view returns (uint256) {
-        return proposalOptions[proposalId].length;
-    }
-
-    function deposit(uint256 amount) external {
+    function deposit(uint256 amount) external returns (uint256) {
         require(
             IERC20(mlnTokenAddr).transferFrom(
                 msg.sender,
@@ -129,69 +94,73 @@ contract Proposal is Initializable, UUPSUpgradeable {
             ),
             "Transfer failed"
         );
-        balances[msg.sender] = balances[msg.sender] + amount;
+        balances[msg.sender] += amount;
         emit Deposited(msg.sender, amount);
+        return balances[msg.sender];
+    }
+
+    function getProposalInfo(
+        uint256 proposalId
+    )
+        external
+        view
+        returns (
+            address founder,
+            string[] memory optionDescs,
+            uint256[] memory optionCounts
+        )
+    {
+        ProposalInfo storage proposal = proposalInfos[proposalId];
+        uint256 optionLength = proposal.options.length;
+
+        string[] memory descs = new string[](optionLength);
+        uint256[] memory counts = new uint256[](optionLength);
+
+        for (uint256 i = 0; i < optionLength; i++) {
+            descs[i] = proposal.options[i].desc;
+            counts[i] = proposal.options[i].count;
+        }
+
+        return (proposal.founder, descs, counts);
     }
 
     function createProposal(
-        uint256 amount,
-        string[] memory options,
-        uint256 endtime
+        string[] memory optionDescs
     ) external returns (uint256) {
-        uint availableBalance = getAvailableBalance(msg.sender);
-        if (availableBalance < amount) {
-            revert InsufficientBalance(msg.sender, availableBalance);
-        } else {
-            proposalDeposit[msg.sender] += amount;
+        // 推入一个新的ProposalInfo实例到数组中
+        proposalInfos.push();
+        uint256 len = proposalInfos.length - 1;
+
+        ProposalInfo storage newProposal = proposalInfos[len];
+        newProposal.founder = msg.sender;
+
+        for (uint256 i = 0; i < optionDescs.length; i++) {
+            newProposal.options.push(Option(optionDescs[i], 0));
         }
 
-        uint256 unlockTime = block.timestamp + (endtime * 1 days);
-        uint256 newId = proposals.length;
-        proposals.push(
-            Proposal({
-                proposer: msg.sender,
-                stakeAmount: amount,
-                active: true,
-                isSettled: false,
-                isWagered: amount > 0,
-                endTime: unlockTime
-            })
-        );
-        for (uint256 i = 0; i < options.length; i++) {
-            proposalOptions[newId].push(
-                Option({description: options[i], voteCount: 0})
-            );
-        }
-        emit CreateProposal(msg.sender, newId, amount, options, unlockTime);
-        return newId;
+        emit CreateProposal(msg.sender, len, optionDescs);
+        return len;
     }
 
-    function exchangePoints(uint256 points) external {
+    function exchangePoints(uint256 points) external returns (uint256) {
         require(points > 0, "Points must be greater than zero");
         balances[msg.sender] += points;
         emit ExchangePoints(msg.sender, points);
+        return balances[msg.sender];
     }
 
     function withdraw(uint256 amount) external {
-        // Ensure that users have sufficient balance to withdraw
         uint256 availableBalance = getAvailableBalance(msg.sender);
-        require(
-            availableBalance >= amount,
-            "Not enough available balance to withdraw"
-        );
+
+        if (availableBalance >= amount) {
+            revert InsufficientBalance(msg.sender, availableBalance);
+        }
         require(
             IERC20(mlnTokenAddr).transfer(msg.sender, amount),
             "Transfer failed"
         );
         balances[msg.sender] -= amount;
-        emit WithdrawalDetailed(msg.sender, amount, balances[msg.sender]);
-    }
-
-    function getProposalStatus(
-        uint256 proposalId
-    ) external view returns (bool) {
-        Proposal storage proposal = proposals[proposalId];
-        return proposal.active;
+        emit Withdraw(msg.sender, amount, balances[msg.sender]);
     }
 
     function vote(
@@ -199,235 +168,136 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 optionId,
         uint256 amount
     ) external {
-        require(proposalId < proposals.length, "The proposal does not exist");
-        require(
-            optionId < proposalOptions[proposalId].length,
-            "The option does not exist"
-        );
-        require(
-            block.timestamp < proposals[proposalId].endTime,
-            "The voting period for this proposal has ended"
-        );
-        require(proposals[proposalId].active, "The proposal is not active");
         require(
             getAvailableBalance(msg.sender) >= amount,
             "Insufficient voting rights"
         );
-        votingDeposit[msg.sender] += amount;
-        proposalOptions[proposalId][optionId].voteCount += amount;
-        votingRecordsforProposals[proposalId][optionId].push(
-            Vote(msg.sender, amount)
+        votingLock[msg.sender] += amount;
+        ProposalInfo storage proposal = proposalInfos[proposalId];
+        proposal.options[optionId].count += amount;
+        proposalVotingSituation[proposalId][optionId].push(
+            VoteInfo(msg.sender, amount)
         );
+
         emit Voted(msg.sender, proposalId, optionId, amount);
     }
 
-    function settleRewards(
+    function proposalSettlement(
         uint256 proposalId,
-        uint256 winningOptionId
+        uint256 winOptionId
     ) external {
-        Proposal storage proposal = proposals[proposalId];
-        require(
-            !proposal.active,
-            "Proposal must be inactive to settle rewards."
-        );
-        require(!proposal.isSettled, "Rewards already settled");
-
         bool isSingleOptionStatus = isSingleOptionProposal(
             proposalId,
-            winningOptionId
+            winOptionId
         );
-
-        mapping(uint => Vote[]) storage voteRecords = votingRecordsforProposals[
-            proposalId
-        ];
 
         if (isSingleOptionStatus) {
-            // Return all pledges in the original way
-            for (uint256 i = 0; i < voteRecords[winningOptionId].length; i++) {
-                Vote memory vote = voteRecords[winningOptionId][i];
-                votingDeposit[vote.user] -= vote.amount;
+            handleSingleOptionProposal(proposalId, winOptionId);
+        } else {
+            handleMultiOptionProposal(proposalId, winOptionId);
+        }
+        proposalWinningOption[proposalId] = winOptionId;
+    }
+
+    function handleSingleOptionProposal(
+        uint256 proposalId,
+        uint256 winOptionId
+    ) internal {
+        mapping(uint256 => VoteInfo[])
+            storage voteRecords = proposalVotingSituation[winOptionId];
+
+        for (uint256 i = 0; i < voteRecords[winOptionId].length; i++) {
+            VoteInfo memory voteInfo = voteRecords[winOptionId][i];
+            votingLock[voteInfo.user] -= voteInfo.amount;
+        }
+        emit ProposalRefunded(proposalId, winOptionId);
+    }
+
+    function handleMultiOptionProposal(
+        uint256 proposalId,
+        uint256 winOptionId
+    ) internal {
+        ProposalInfo storage proposalInfo = proposalInfos[proposalId];
+        mapping(uint256 => VoteInfo[])
+            storage voteRecords = proposalVotingSituation[winOptionId];
+
+        uint256 totalStake;
+        uint256 optionCount = proposalInfo.options.length;
+        uint256 winVoteCount = proposalInfo.options[winOptionId].count;
+
+        for (uint256 i = 0; i < optionCount; i++) {
+            totalStake += proposalInfo.options[i].count;
+        }
+
+        balances[proposalInfo.founder] += (totalStake * 5) / 100;
+        uint256 totalStakeExtractFee = (totalStake * 90) / 100;
+
+        for (uint256 i = 0; i < optionCount; i++) {
+            distributeRewardsAndPenalties(
+                proposalId,
+                winOptionId,
+                totalStakeExtractFee,
+                winVoteCount,
+                voteRecords[i],
+                i
+            );
+        }
+    }
+
+    function distributeRewardsAndPenalties(
+        uint256 proposalId,
+        uint256 winOptionId,
+        uint256 totalStakeExtractFee,
+        uint256 winVoteCount,
+        VoteInfo[] memory voteInfos,
+        uint256 optionId
+    ) internal {
+        for (uint256 j = 0; j < voteInfos.length; j++) {
+            VoteInfo memory voteInfo = voteInfos[j];
+            votingLock[voteInfo.user] -= voteInfo.amount;
+
+            if (optionId == winOptionId) {
+                uint256 reward = (voteInfo.amount * totalStakeExtractFee) /
+                    winVoteCount;
+                uint256 rewardExcludingPrincipal = reward - voteInfo.amount;
+                balances[voteInfo.user] += rewardExcludingPrincipal;
+                userProposalResults[proposalId][voteInfo.user] = int256(
+                    rewardExcludingPrincipal
+                );
+                emit ProposalSettlement(
+                    voteInfo.user,
+                    proposalId,
+                    int256(rewardExcludingPrincipal)
+                );
+            } else {
+                balances[voteInfo.user] -= voteInfo.amount;
+                userProposalResults[proposalId][voteInfo.user] =
+                    int256(voteInfo.amount) *
+                    -1;
+                emit ProposalSettlement(
+                    voteInfo.user,
+                    proposalId,
+                    int256(voteInfo.amount) * -1
+                );
             }
-            emit ProposalRefunded(proposalId, winningOptionId);
-        } else {
-            uint totalStake;
-            uint optionCount = proposalOptions[proposalId].length;
-            // Calculate the total amount of pledged options for this proposal
-            for (uint i = 0; i < optionCount; i++) {
-                totalStake += proposalOptions[proposalId][i].voteCount;
-            }
-            // The initiator of the proposal receives a 5% reward from the pledge of the proposal
-            balances[proposal.proposer] += (totalStake * 5) / 100;
-
-            // Calculate the number of proposal tokens after extracting 5% platform fee and 5% proposal initiator reward
-            uint totalStakeExtractFee = (totalStake * 90) / 100;
-
-            for (
-                uint optionIndex = 0;
-                optionIndex < optionCount;
-                optionIndex++
-            ) {
-                Vote[] memory votes = voteRecords[optionIndex];
-                for (
-                    uint voteIndex = 0;
-                    voteIndex < votes.length;
-                    voteIndex++
-                ) {
-                    Vote memory voteInfo = votes[voteIndex];
-                    votingDeposit[voteInfo.user] -= voteInfo.amount;
-
-                    if (optionIndex == winningOptionId) {
-                        // Distribute rewards according to the proportion of voters pledging
-                        uint voterReward = (voteInfo.amount *
-                            totalStakeExtractFee) /
-                            proposalOptions[proposalId][optionIndex].voteCount;
-
-                        voterReward -= voteInfo.amount;
-                        balances[voteInfo.user] += voterReward;
-
-                        rewardOrPenaltyInSettledProposal[proposalId][
-                            voteInfo.user
-                        ] = int256(voterReward);
-                        emit RewardDistributed(
-                            voteInfo.user,
-                            proposalId,
-                            voterReward,
-                            true
-                        );
-                    } else {
-                        // Calculate penalty amount
-                        balances[voteInfo.user] -= voteInfo.amount;
-                        rewardOrPenaltyInSettledProposal[proposalId][
-                            voteInfo.user
-                        ] = int256(voteInfo.amount) * -1;
-                        emit RewardDistributed(
-                            voteInfo.user,
-                            proposalId,
-                            voteInfo.amount,
-                            false
-                        );
-                    }
-                }
-            }
-        }
-        winningOptionByProposal[proposalId] = winningOptionId;
-        proposal.isSettled = true;
-    }
-
-    // 评价一般提案
-    function settleFundsForAverageQuality(uint256 proposalId) external {
-        require(proposalId < proposals.length, "Proposal does not exist.");
-        Proposal storage proposal = proposals[proposalId];
-        require(proposal.active, "Proposal is still active.");
-        require(!proposal.isSettled, "Funds already settled");
-        deactivateProposal(proposalId); // 将提案状态设置为非活跃
-
-        uint256 stakedAmount = proposal.stakeAmount;
-        if (proposal.isWagered) {
-            uint256 currentDeposit = proposalDeposit[proposal.proposer];
-            proposalDeposit[proposal.proposer] = stakedAmount > currentDeposit
-                ? 0
-                : currentDeposit - stakedAmount;
-        } else {
-            proposal.isSettled = true;
-        }
-        uint256 serviceFee = (proposal.stakeAmount * 3) / 100; // Calculating 3% service fee
-        uint256 reward = (proposal.stakeAmount * 5) / 100; // Calculating 5% reward
-        uint256 profit = reward - serviceFee;
-
-        balances[proposal.proposer] += profit; // Updating balance without actual transfer
-
-        emit FundsSettledForAverageQuality(
-            proposalId,
-            proposal.proposer,
-            profit
-        );
-    }
-
-    function verifyComplianceAndExpectations(uint256 proposalId) external {
-        require(proposalId < proposals.length, "Proposal does not exist.");
-        Proposal storage proposal = proposals[proposalId];
-        require(proposal.active, "Proposal is still active.");
-        require(!proposal.isSettled, "Funds already settled");
-        deactivateProposal(proposalId); // 将提案状态设置为非活跃
-        uint256 stakedAmount = proposal.stakeAmount;
-        if (proposal.isWagered) {
-            // 确保不会导致下溢
-            uint256 currentDeposit = proposalDeposit[proposal.proposer];
-            proposalDeposit[proposal.proposer] = stakedAmount > currentDeposit
-                ? 0
-                : currentDeposit - stakedAmount;
-        } else {
-            proposal.isSettled = true;
-        }
-        uint256 serviceFee = (proposal.stakeAmount * 3) / 100; // Calculating 3% service fee
-        uint256 reward = (proposal.stakeAmount * 10) / 100; // Calculating 10% reward
-        uint256 profit = reward - serviceFee;
-
-        balances[proposal.proposer] += profit; // Updating balance without actual transfer
-
-        emit FundsSettledForAverageQuality(
-            proposalId,
-            proposal.proposer,
-            profit
-        );
-    }
-
-    function checkQualityComplianceBelowExpectations(
-        uint256 proposalId
-    ) external {
-        require(proposalId < proposals.length, "Proposal does not exist.");
-        Proposal storage proposal = proposals[proposalId];
-        require(proposal.active, "Proposal is still active.");
-        require(!proposal.isSettled, "Funds already settled");
-        deactivateProposal(proposalId); // 将提案状态设置为非活跃
-
-        uint256 stakedAmount = proposal.stakeAmount;
-        if (proposal.isWagered) {
-            // 确保不会导致下溢
-            uint256 currentDeposit = proposalDeposit[proposal.proposer];
-            proposalDeposit[proposal.proposer] = stakedAmount > currentDeposit
-                ? 0
-                : currentDeposit - stakedAmount;
-        } else {
-            proposal.isSettled = true;
-        }
-        uint256 punishment = (proposal.stakeAmount * 5) / 100; // Calculating 5% punishment
-
-        balances[proposal.proposer] -= punishment; // Updating balance without actual transfer
-
-        emit FundsPenalizedForNonCompliance(
-            proposalId,
-            proposal.proposer,
-            punishment
-        );
-    }
-
-    function deactivateProposal(uint256 proposalId) public {
-        Proposal storage proposal = proposals[proposalId];
-        if (block.timestamp > proposal.endTime || proposal.active) {
-            proposal.active = false;
-            emit ProposalStatusChanged(proposalId, false);
         }
     }
 
     function getAvailableBalance(address user) public view returns (uint256) {
         uint256 totalBalance = balances[user];
-        uint256 lockedForVoting = votingDeposit[user];
-        uint256 lockedInProposals = proposalDeposit[user];
-        uint256 totalLocked = lockedForVoting + lockedInProposals;
-        return totalBalance > totalLocked ? totalBalance - totalLocked : 0;
+        uint256 lockedForVoting = votingLock[user];
+        uint256 totalLocked = lockedForVoting;
+        return totalBalance - totalLocked;
     }
 
     function isSingleOptionProposal(
         uint256 proposalId,
-        uint winningOptionId
+        uint256 winOptionId
     ) internal view returns (bool) {
-        uint optionCount = proposalOptions[proposalId].length;
-        for (uint i = 0; i < optionCount; i++) {
-            if (
-                i != winningOptionId &&
-                proposalOptions[proposalId][i].voteCount > 0
-            ) {
+        ProposalInfo memory proposalInfo = proposalInfos[proposalId];
+        Option[] memory options = proposalInfo.options;
+        for (uint256 i = 0; i < options.length; i++) {
+            if (i != winOptionId && options[i].count > 0) {
                 return false;
             }
         }
