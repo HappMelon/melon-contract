@@ -281,13 +281,7 @@
 					}
 				],
 				"name": "createProposal",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
+				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
 			},
@@ -343,6 +337,35 @@
 						"internalType": "uint256",
 						"name": "",
 						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "proposalId",
+						"type": "uint256"
+					}
+				],
+				"name": "getProposalInfo",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "founder",
+						"type": "address"
+					},
+					{
+						"internalType": "string[]",
+						"name": "optionDescs",
+						"type": "string[]"
+					},
+					{
+						"internalType": "uint256[]",
+						"name": "optionCounts",
+						"type": "uint256[]"
 					}
 				],
 				"stateMutability": "view",
@@ -655,13 +678,13 @@
 		"compilationTarget": {
 			"contracts/Proposal.sol": "Proposal"
 		},
-		"evmVersion": "cancun",
+		"evmVersion": "paris",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
-			"enabled": false,
+			"enabled": true,
 			"runs": 200
 		},
 		"remappings": []
@@ -740,11 +763,11 @@
 			]
 		},
 		"contracts/Proposal.sol": {
-			"keccak256": "0x34eb83850485fae84dcc53add3e7ef75414675b63b3e34e9acdb93018e356f54",
+			"keccak256": "0x2f765fe8d15c537632f13982846634ba7907544b507a39704c80489420cf792a",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://55586a2e5a6f665d07723f41c5e27331ebd7f0a0ea1a8d6681ad435e96072ad1",
-				"dweb:/ipfs/QmYSsDCGg43LZcEGryCnVAxvg3TguTrbDcxXqTW1j2BJkD"
+				"bzz-raw://9ce3c92a8552f0b21a0f05564ba049c9b54039e04eed9c52b719dddfec5e0145",
+				"dweb:/ipfs/QmU8oy6xDm1inAmM5WqCwGe76YWF9L78TtED1AHuBHXUd9"
 			]
 		}
 	},
