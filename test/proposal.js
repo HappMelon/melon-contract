@@ -142,7 +142,6 @@ describe("Proposal", function () {
     // Check if voting was successful
     let accountAVotingLock = await proposalProxy.votingLock(accountA.address);
     console.log("accountAVotingLock:", ethers.formatEther(accountAVotingLock));
-
     let proposalInfo = await proposalProxy.getProposalInfo(0n);
     console.log("proposalInfo:", proposalInfo);
     let optionDescs = proposalInfo[1];
@@ -157,6 +156,10 @@ describe("Proposal", function () {
       console.log(`  Description: ${optionDescs[i]}`);
       console.log(`  Vote Count: ${optionCounts[i].toString()}`);
     }
+
+    let proposalVoters = await proposalProxy.getProposalVoters(0n);
+    console.log("proposalVoters:", proposalVoters);
+
     // Assuming Option 1 wins
     await proposalProxy.proposalSettlement(0n, 0n);
     let proposalCreatorBalance = await proposalProxy.balances(

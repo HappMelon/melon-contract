@@ -99,13 +99,33 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return balances[msg.sender];
     }
 
-    function getProposalInfo(uint256 proposalId)
+    function getProposalVoters(
+        uint256 proposalId
+    )
+        external
+        view
+        returns (uint[] memory, uint)
+    {
+        ProposalInfo storage proposal = proposalInfos[proposalId];
+        uint256 optionLength = proposal.options.length;
+        uint256[] memory numberOfVoterPerProposal = new uint256[](optionLength);
+        uint256 totalVoter = 0;
+        for (uint256 i = 0; i < optionLength; i++) {
+            numberOfVoterPerProposal[i] = proposalVotingSituation[proposalId][i].length;
+            totalVoter += numberOfVoterPerProposal[i];
+        }
+        return (numberOfVoterPerProposal, totalVoter);
+    }
+
+    function getProposalInfo(
+        uint256 proposalId
+    )
         external
         view
         returns (
-            address founder,
-            string[] memory optionDescs,
-            uint256[] memory optionCounts
+            address,
+            string[] memory,
+            uint256[] memory
         )
     {
         ProposalInfo storage proposal = proposalInfos[proposalId];
@@ -122,9 +142,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return (proposal.founder, descs, counts);
     }
 
-    function createProposal(string[] memory optionDescs)
-        external
-    {
+    function createProposal(string[] memory optionDescs) external {
         require(optionDescs.length > 0, "len error");
         // 创建新的 ProposalInfo 实例
         ProposalInfo storage newProposal = proposalInfos.push();
@@ -181,9 +199,10 @@ contract Proposal is Initializable, UUPSUpgradeable {
         emit Voted(msg.sender, proposalId, optionId, amount);
     }
 
-    function proposalSettlement(uint256 proposalId, uint256 winOptionId)
-        external
-    {
+    function proposalSettlement(
+        uint256 proposalId,
+        uint256 winOptionId
+    ) external {
         bool isSingleOptionStatus = isSingleOptionProposal(
             proposalId,
             winOptionId
@@ -197,9 +216,10 @@ contract Proposal is Initializable, UUPSUpgradeable {
         proposalWinningOption[proposalId] = winOptionId;
     }
 
-    function handleSingleOptionProposal(uint256 proposalId, uint256 winOptionId)
-        internal
-    {
+    function handleSingleOptionProposal(
+        uint256 proposalId,
+        uint256 winOptionId
+    ) internal {
         mapping(uint256 => VoteInfo[])
             storage voteRecords = proposalVotingSituation[winOptionId];
 
@@ -210,9 +230,10 @@ contract Proposal is Initializable, UUPSUpgradeable {
         emit ProposalRefunded(proposalId, winOptionId);
     }
 
-    function handleMultiOptionProposal(uint256 proposalId, uint256 winOptionId)
-        internal
-    {
+    function handleMultiOptionProposal(
+        uint256 proposalId,
+        uint256 winOptionId
+    ) internal {
         ProposalInfo storage proposalInfo = proposalInfos[proposalId];
         mapping(uint256 => VoteInfo[])
             storage voteRecords = proposalVotingSituation[winOptionId];
@@ -286,11 +307,10 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return totalBalance - totalLocked;
     }
 
-    function isSingleOptionProposal(uint256 proposalId, uint256 winOptionId)
-        internal
-        view
-        returns (bool)
-    {
+    function isSingleOptionProposal(
+        uint256 proposalId,
+        uint256 winOptionId
+    ) internal view returns (bool) {
         ProposalInfo memory proposalInfo = proposalInfos[proposalId];
         Option[] memory options = proposalInfo.options;
         for (uint256 i = 0; i < options.length; i++) {
@@ -301,11 +321,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return true;
     }
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyOwner
-    {
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {
         logicAddress = newImplementation;
     }
 }

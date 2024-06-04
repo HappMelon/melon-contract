@@ -15,7 +15,7 @@ https://app.txsync.io/bridge
 - melonToken  
 0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD
 - proposalAddr  
-0x68386FaD40442a9D0C189FB087b8633dde79AF5a
+0xD27846d59667A7410880fEe153C801Ca41466b20
 - melonNft  
 0x027da933c821D112A1b97EB1e5cE653cfb28768F
 - assessor   
