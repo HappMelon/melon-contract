@@ -99,9 +99,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return balances[msg.sender];
     }
 
-    function getProposalInfo(
-        uint256 proposalId
-    )
+    function getProposalInfo(uint256 proposalId)
         external
         view
         returns (
@@ -124,22 +122,23 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return (proposal.founder, descs, counts);
     }
 
-    function createProposal(
-        string[] memory optionDescs
-    ) external returns (uint256) {
-        // 推入一个新的ProposalInfo实例到数组中
-        proposalInfos.push();
-        uint256 len = proposalInfos.length - 1;
+    function createProposal(string[] memory optionDescs)
+        external
+    {
+        require(optionDescs.length > 0, "len error");
+        // 创建新的 ProposalInfo 实例
+        ProposalInfo storage newProposal = proposalInfos.push();
 
-        ProposalInfo storage newProposal = proposalInfos[len];
         newProposal.founder = msg.sender;
 
         for (uint256 i = 0; i < optionDescs.length; i++) {
             newProposal.options.push(Option(optionDescs[i], 0));
         }
 
+        // 返回新 ProposalInfo 实例的索引
+        uint256 len = proposalInfos.length - 1;
+
         emit CreateProposal(msg.sender, len, optionDescs);
-        return len;
     }
 
     function exchangePoints(uint256 points) external returns (uint256) {
@@ -182,10 +181,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
         emit Voted(msg.sender, proposalId, optionId, amount);
     }
 
-    function proposalSettlement(
-        uint256 proposalId,
-        uint256 winOptionId
-    ) external {
+    function proposalSettlement(uint256 proposalId, uint256 winOptionId)
+        external
+    {
         bool isSingleOptionStatus = isSingleOptionProposal(
             proposalId,
             winOptionId
@@ -199,10 +197,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
         proposalWinningOption[proposalId] = winOptionId;
     }
 
-    function handleSingleOptionProposal(
-        uint256 proposalId,
-        uint256 winOptionId
-    ) internal {
+    function handleSingleOptionProposal(uint256 proposalId, uint256 winOptionId)
+        internal
+    {
         mapping(uint256 => VoteInfo[])
             storage voteRecords = proposalVotingSituation[winOptionId];
 
@@ -213,10 +210,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
         emit ProposalRefunded(proposalId, winOptionId);
     }
 
-    function handleMultiOptionProposal(
-        uint256 proposalId,
-        uint256 winOptionId
-    ) internal {
+    function handleMultiOptionProposal(uint256 proposalId, uint256 winOptionId)
+        internal
+    {
         ProposalInfo storage proposalInfo = proposalInfos[proposalId];
         mapping(uint256 => VoteInfo[])
             storage voteRecords = proposalVotingSituation[winOptionId];
@@ -290,10 +286,11 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return totalBalance - totalLocked;
     }
 
-    function isSingleOptionProposal(
-        uint256 proposalId,
-        uint256 winOptionId
-    ) internal view returns (bool) {
+    function isSingleOptionProposal(uint256 proposalId, uint256 winOptionId)
+        internal
+        view
+        returns (bool)
+    {
         ProposalInfo memory proposalInfo = proposalInfos[proposalId];
         Option[] memory options = proposalInfo.options;
         for (uint256 i = 0; i < options.length; i++) {
@@ -304,9 +301,11 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return true;
     }
 
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {
         logicAddress = newImplementation;
     }
 }

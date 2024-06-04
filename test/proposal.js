@@ -144,6 +144,9 @@ describe("Proposal", function () {
     console.log("accountAVotingLock:", ethers.formatEther(accountAVotingLock));
 
     let proposalInfo = await proposalProxy.getProposalInfo(0n);
+    console.log("proposalInfo:", proposalInfo);
+    let optionDescs = proposalInfo[1];
+    let optionCounts = proposalInfo[2];
     // 提案创建者
     const founder = proposalInfo[0];
     console.log("Founder:", founder);
