@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./MelonNft.sol";
-import "./Assessor.sol";
+import "./Jury.sol";
 import "./MelonToken.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -16,7 +16,7 @@ contract JuryNFTSwap is IERC721Receiver {
         uint timestamp;
     }
 
-    Assessor public assessor;
+    Jury public jury;
     MelonToken public melonToken;
     NFTSalesInformation[] public nftSaleInfoList;
     // nftAddress => tokenId => NFTSalesInformation
@@ -62,7 +62,7 @@ contract JuryNFTSwap is IERC721Receiver {
 
     constructor(address token, address _assessor) {
         melonToken = MelonToken(token);
-        assessor = Assessor(_assessor);
+        jury = Jury(_assessor);
     }
 
     function getAllListing()
@@ -122,7 +122,7 @@ contract JuryNFTSwap is IERC721Receiver {
         melonToken.transferFrom(msg.sender, address(this), curListing.price);
         nft.safeTransferFrom(address(this), msg.sender, tokenId);
 
-        assessor.updateJurorStatus(true);
+        // jury.updateJurorStatus(true);
 
         emit BuyNFT(msg.sender, nftAddr, tokenId, curListing.price);
     }

@@ -777,11 +777,11 @@
 			]
 		},
 		"contracts/MelonToken.sol": {
-			"keccak256": "0x690ab88e2b30fcee3d61463a58a095d85cbdac7da9ade6439ba66c294e5001a3",
+			"keccak256": "0x0ea0df6c42e73bc65fd935a40ed9f23fed8d45aaaee85e37f205bfde2e921483",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://53cb988f3b2255eb077335f96366f425d2691659293ca7331e260b00c92ff493",
-				"dweb:/ipfs/QmTqMCkr3ikdhipTFtZVAgbknBRtUZD8vYT6wodL9d7Msa"
+				"bzz-raw://c4ab1aa07c0665f5e86d6218675001cb634f3ae692ad771a54ecfee04291fcd4",
+				"dweb:/ipfs/QmYeZkZXgwSPWhEzx9S8rGCoGupQ2M4hAvxQc6sEUxPTqy"
 			]
 		}
 	},

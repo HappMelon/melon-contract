@@ -8,6 +8,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
     struct Option {
         string desc;
         uint256 count;
+        uint256 voters;
     }
 
     struct ProposalInfo {
@@ -20,7 +21,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 amount;
     }
 
-    //事件
     event Deposited(address indexed user, uint256 amount);
 
     event Voted(
@@ -32,20 +32,28 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     event Withdraw(address indexed user, uint256 amount, uint256 balance);
 
-    event CreateProposal(
+    event Create(
         address indexed founder,
         uint256 indexed id,
         string[] options
     );
-    event ProposalSettlement(
-        address indexed voter,
+
+    event Settle(
         uint256 proposalId,
-        int256 amount
+        uint256 winningOptionId,
+        address[] jurors
     );
 
     event ExchangePoints(address indexed user, uint256 points);
 
-    event ProposalRefunded(uint256 indexed proposalId, uint256 winOptionId);
+    event Refunded(uint256 indexed proposalId, uint256 winOptionId);
+
+    event JurorsDistributeRewards(
+        uint256 indexed proposalId,
+        address[] jurors,
+        uint256 reward,
+        uint256 rewardPerJuror
+    );
 
     error InsufficientBalance(address user, uint256 availableBalance);
 
@@ -65,9 +73,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
     mapping(address => uint256) public votingLock; // The amount voted by the user
 
     mapping(uint256 => mapping(uint256 => VoteInfo[]))
-        public proposalVotingSituation;
+        public voting;
 
-    mapping(uint256 => uint256) public proposalWinningOption; // Record the winning options for settled proposals
+    mapping(uint256 => uint256) public winningOption; // Record the winning options for settled proposals
 
     mapping(uint256 => mapping(address => int256)) public userProposalResults; // Record rewards or punishments for settlement proposal users
 
@@ -85,6 +93,13 @@ contract Proposal is Initializable, UUPSUpgradeable {
         owner = msg.sender;
     }
 
+    function getVoting(
+        uint256 proposalId,
+        uint256 optionId
+    ) external view returns (VoteInfo[] memory) {
+        return voting[proposalId][optionId];
+    }
+
     function deposit(uint256 amount) external returns (uint256) {
         require(
             IERC20(mlnTokenAddr).transferFrom(
@@ -99,50 +114,38 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return balances[msg.sender];
     }
 
-    function getProposalVoters(
+    function getDetails(
         uint256 proposalId
     )
-        external
-        view
-        returns (uint[] memory, uint)
-    {
-        ProposalInfo storage proposal = proposalInfos[proposalId];
-        uint256 optionLength = proposal.options.length;
-        uint256[] memory numberOfVoterPerProposal = new uint256[](optionLength);
-        uint256 totalVoter = 0;
-        for (uint256 i = 0; i < optionLength; i++) {
-            numberOfVoterPerProposal[i] = proposalVotingSituation[proposalId][i].length;
-            totalVoter += numberOfVoterPerProposal[i];
-        }
-        return (numberOfVoterPerProposal, totalVoter);
-    }
-
-    function getProposalInfo(
-        uint256 proposalId
-    )
-        external
+        public
         view
         returns (
-            address,
-            string[] memory,
-            uint256[] memory
+            address founder,
+            string[] memory optionDescription,
+            uint256[] memory counts,
+            uint256[] memory voters,
+            uint256 allVotesCast,
+            uint256 allVoters
         )
     {
         ProposalInfo storage proposal = proposalInfos[proposalId];
         uint256 optionLength = proposal.options.length;
 
-        string[] memory descs = new string[](optionLength);
-        uint256[] memory counts = new uint256[](optionLength);
+        optionDescription = new string[](optionLength);
+        counts = new uint256[](optionLength);
+        voters = new uint256[](optionLength);
+        founder = proposal.founder;
 
         for (uint256 i = 0; i < optionLength; i++) {
-            descs[i] = proposal.options[i].desc;
+            optionDescription[i] = proposal.options[i].desc;
             counts[i] = proposal.options[i].count;
+            voters[i] = proposal.options[i].voters;
+            allVoters += proposal.options[i].voters;
+            allVotesCast += proposal.options[i].count;
         }
-
-        return (proposal.founder, descs, counts);
     }
 
-    function createProposal(string[] memory optionDescs) external {
+    function create(string[] memory optionDescs) external {
         require(optionDescs.length > 0, "len error");
         // 创建新的 ProposalInfo 实例
         ProposalInfo storage newProposal = proposalInfos.push();
@@ -150,20 +153,19 @@ contract Proposal is Initializable, UUPSUpgradeable {
         newProposal.founder = msg.sender;
 
         for (uint256 i = 0; i < optionDescs.length; i++) {
-            newProposal.options.push(Option(optionDescs[i], 0));
+            newProposal.options.push(Option(optionDescs[i], 0, 0));
         }
 
         // 返回新 ProposalInfo 实例的索引
         uint256 len = proposalInfos.length - 1;
 
-        emit CreateProposal(msg.sender, len, optionDescs);
+        emit Create(msg.sender, len, optionDescs);
     }
 
-    function exchangePoints(uint256 points) external returns (uint256) {
+    function exchangePoints(uint256 points) external {
         require(points > 0, "Points must be greater than zero");
         balances[msg.sender] += points;
         emit ExchangePoints(msg.sender, points);
-        return balances[msg.sender];
     }
 
     function withdraw(uint256 amount) external {
@@ -190,19 +192,25 @@ contract Proposal is Initializable, UUPSUpgradeable {
             "Insufficient voting rights"
         );
         votingLock[msg.sender] += amount;
+
         ProposalInfo storage proposal = proposalInfos[proposalId];
         proposal.options[optionId].count += amount;
-        proposalVotingSituation[proposalId][optionId].push(
+        proposal.options[optionId].voters += 1;
+
+        voting[proposalId][optionId].push(
             VoteInfo(msg.sender, amount)
         );
 
         emit Voted(msg.sender, proposalId, optionId, amount);
     }
 
-    function proposalSettlement(
+    function settle(
         uint256 proposalId,
-        uint256 winOptionId
+        uint256 winOptionId,
+        address[] memory jurors
     ) external {
+        emit Settle(proposalId, winOptionId, jurors);
+
         bool isSingleOptionStatus = isSingleOptionProposal(
             proposalId,
             winOptionId
@@ -211,9 +219,33 @@ contract Proposal is Initializable, UUPSUpgradeable {
         if (isSingleOptionStatus) {
             handleSingleOptionProposal(proposalId, winOptionId);
         } else {
+            handleJurorsDistributeRewards(proposalId, jurors);
             handleMultiOptionProposal(proposalId, winOptionId);
         }
-        proposalWinningOption[proposalId] = winOptionId;
+        winningOption[proposalId] = winOptionId;
+
+    }
+
+    function handleJurorsDistributeRewards(
+        uint256 proposalId,
+        address[] memory jurors
+    ) internal {
+        (, , , , uint256 allVotesCast, ) = getDetails(proposalId);
+
+        uint256 reward = (allVotesCast * 2) / 100;
+        uint256 rewardPerJuror = reward / jurors.length;
+
+        for (uint256 i = 0; i < jurors.length; i++) {
+            balances[jurors[i]] += rewardPerJuror;
+            userProposalResults[proposalId][jurors[i]] = int256(rewardPerJuror);
+        }
+
+        emit JurorsDistributeRewards(
+            proposalId,
+            jurors,
+            reward,
+            rewardPerJuror
+        );
     }
 
     function handleSingleOptionProposal(
@@ -221,13 +253,13 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 winOptionId
     ) internal {
         mapping(uint256 => VoteInfo[])
-            storage voteRecords = proposalVotingSituation[winOptionId];
+            storage voteRecords = voting[winOptionId];
 
         for (uint256 i = 0; i < voteRecords[winOptionId].length; i++) {
             VoteInfo memory voteInfo = voteRecords[winOptionId][i];
             votingLock[voteInfo.user] -= voteInfo.amount;
         }
-        emit ProposalRefunded(proposalId, winOptionId);
+        emit Refunded(proposalId, winOptionId);
     }
 
     function handleMultiOptionProposal(
@@ -235,26 +267,23 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 winOptionId
     ) internal {
         ProposalInfo storage proposalInfo = proposalInfos[proposalId];
-        mapping(uint256 => VoteInfo[])
-            storage voteRecords = proposalVotingSituation[winOptionId];
-
-        uint256 totalStake;
         uint256 optionCount = proposalInfo.options.length;
-        uint256 winVoteCount = proposalInfo.options[winOptionId].count;
 
-        for (uint256 i = 0; i < optionCount; i++) {
-            totalStake += proposalInfo.options[i].count;
-        }
+        mapping(uint256 => VoteInfo[])
+            storage voteRecords = voting[winOptionId];
 
-        balances[proposalInfo.founder] += (totalStake * 5) / 100;
-        uint256 totalStakeExtractFee = (totalStake * 90) / 100;
+        (, , uint256[] memory counts, , uint256 allVotesCast, ) = getDetails(
+            proposalId
+        );
+        balances[proposalInfo.founder] += (allVotesCast * 5) / 100;
+        uint256 totalStakeExtractFee = (allVotesCast * 88) / 100;
 
         for (uint256 i = 0; i < optionCount; i++) {
             distributeRewardsAndPenalties(
                 proposalId,
                 winOptionId,
                 totalStakeExtractFee,
-                winVoteCount,
+                counts[winOptionId],
                 voteRecords[i],
                 i
             );
@@ -281,21 +310,13 @@ contract Proposal is Initializable, UUPSUpgradeable {
                 userProposalResults[proposalId][voteInfo.user] = int256(
                     rewardExcludingPrincipal
                 );
-                emit ProposalSettlement(
-                    voteInfo.user,
-                    proposalId,
-                    int256(rewardExcludingPrincipal)
-                );
+            
             } else {
                 balances[voteInfo.user] -= voteInfo.amount;
                 userProposalResults[proposalId][voteInfo.user] =
                     int256(voteInfo.amount) *
                     -1;
-                emit ProposalSettlement(
-                    voteInfo.user,
-                    proposalId,
-                    int256(voteInfo.amount) * -1
-                );
+               
             }
         }
     }

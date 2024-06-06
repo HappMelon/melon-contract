@@ -151,6 +151,37 @@
 					},
 					{
 						"indexed": false,
+						"internalType": "address[]",
+						"name": "jurors",
+						"type": "address[]"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "reward",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "rewardPerJuror",
+						"type": "uint256"
+					}
+				],
+				"name": "JurorsDistributeRewards",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "proposalId",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
 						"internalType": "uint256",
 						"name": "winOptionId",
 						"type": "uint256"
@@ -181,7 +212,7 @@
 						"type": "int256"
 					}
 				],
-				"name": "ProposalSettlement",
+				"name": "ProposalSettle",
 				"type": "event"
 			},
 			{
@@ -280,7 +311,7 @@
 						"type": "string[]"
 					}
 				],
-				"name": "createProposal",
+				"name": "create",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -313,13 +344,7 @@
 					}
 				],
 				"name": "exchangePoints",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
+				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
 			},
@@ -350,7 +375,7 @@
 						"type": "uint256"
 					}
 				],
-				"name": "getProposalInfo",
+				"name": "getDetails",
 				"outputs": [
 					{
 						"internalType": "address",
@@ -359,13 +384,28 @@
 					},
 					{
 						"internalType": "string[]",
-						"name": "optionDescs",
+						"name": "optionDescription",
 						"type": "string[]"
 					},
 					{
 						"internalType": "uint256[]",
-						"name": "optionCounts",
+						"name": "counts",
 						"type": "uint256[]"
+					},
+					{
+						"internalType": "uint256[]",
+						"name": "voters",
+						"type": "uint256[]"
+					},
+					{
+						"internalType": "uint256",
+						"name": "allVotesCast",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "allVoters",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -446,24 +486,6 @@
 				"inputs": [
 					{
 						"internalType": "uint256",
-						"name": "proposalId",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "winOptionId",
-						"type": "uint256"
-					}
-				],
-				"name": "proposalSettlement",
-				"outputs": [],
-				"stateMutability": "nonpayable",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "uint256",
 						"name": "",
 						"type": "uint256"
 					},
@@ -495,25 +517,6 @@
 				"type": "function"
 			},
 			{
-				"inputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"name": "proposalWinningOption",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
 				"inputs": [],
 				"name": "proxiableUUID",
 				"outputs": [
@@ -524,6 +527,29 @@
 					}
 				],
 				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "proposalId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "winOptionId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address[]",
+						"name": "jurors",
+						"type": "address[]"
+					}
+				],
+				"name": "settle",
+				"outputs": [],
+				"stateMutability": "nonpayable",
 				"type": "function"
 			},
 			{
@@ -627,6 +653,25 @@
 				"inputs": [
 					{
 						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "winningOption",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
 						"name": "amount",
 						"type": "uint256"
 					}
@@ -678,13 +723,13 @@
 		"compilationTarget": {
 			"contracts/Proposal.sol": "Proposal"
 		},
-		"evmVersion": "paris",
+		"evmVersion": "cancun",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
-			"enabled": true,
+			"enabled": false,
 			"runs": 200
 		},
 		"remappings": []
@@ -763,11 +808,11 @@
 			]
 		},
 		"contracts/Proposal.sol": {
-			"keccak256": "0x2f765fe8d15c537632f13982846634ba7907544b507a39704c80489420cf792a",
+			"keccak256": "0x51b64a72aa90bfcfe7235d8c321f430a4916dd6cc4b8783b38e1ceb2a030a8eb",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://9ce3c92a8552f0b21a0f05564ba049c9b54039e04eed9c52b719dddfec5e0145",
-				"dweb:/ipfs/QmU8oy6xDm1inAmM5WqCwGe76YWF9L78TtED1AHuBHXUd9"
+				"bzz-raw://d2c875d6bb4176195176ded39463e42b086890b105baa44191626260f862ba5a",
+				"dweb:/ipfs/QmUwrZdzW9urwaEw2HxdmVRZg1pbvntdKF25nv28W4j8be"
 			]
 		}
 	},
