@@ -171,13 +171,15 @@ contract Proposal is Initializable, UUPSUpgradeable {
     function withdraw(uint256 amount) external {
         uint256 availableBalance = getAvailableBalance(msg.sender);
 
-        if (availableBalance >= amount) {
+        if (availableBalance < amount) {
             revert InsufficientBalance(msg.sender, availableBalance);
         }
+
         require(
             IERC20(mlnTokenAddr).transfer(msg.sender, amount),
             "Transfer failed"
         );
+        
         balances[msg.sender] -= amount;
         emit Withdraw(msg.sender, amount, balances[msg.sender]);
     }

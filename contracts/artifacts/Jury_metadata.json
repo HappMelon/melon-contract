@@ -8,17 +8,6 @@
 			{
 				"inputs": [
 					{
-						"internalType": "address",
-						"name": "_proposalAddr",
-						"type": "address"
-					}
-				],
-				"stateMutability": "nonpayable",
-				"type": "constructor"
-			},
-			{
-				"inputs": [
-					{
 						"internalType": "uint256",
 						"name": "proposalId",
 						"type": "uint256"
@@ -42,6 +31,38 @@
 				],
 				"name": "NotYetDue",
 				"type": "error"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "previousAdmin",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "newAdmin",
+						"type": "address"
+					}
+				],
+				"name": "AdminChanged",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "beacon",
+						"type": "address"
+					}
+				],
+				"name": "BeaconUpgraded",
+				"type": "event"
 			},
 			{
 				"anonymous": false,
@@ -86,12 +107,38 @@
 				"inputs": [
 					{
 						"indexed": false,
+						"internalType": "uint8",
+						"name": "version",
+						"type": "uint8"
+					}
+				],
+				"name": "Initialized",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
 						"internalType": "uint256",
 						"name": "proposalId",
 						"type": "uint256"
 					}
 				],
 				"name": "Success",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "implementation",
+						"type": "address"
+					}
+				],
+				"name": "Upgraded",
 				"type": "event"
 			},
 			{
@@ -168,6 +215,32 @@
 				"type": "function"
 			},
 			{
+				"inputs": [],
+				"name": "impleAddr",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_proposalAddr",
+						"type": "address"
+					}
+				],
+				"name": "initialize",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "uint256",
@@ -205,6 +278,63 @@
 				"type": "function"
 			},
 			{
+				"inputs": [],
+				"name": "proxiableUUID",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_proposalAddr",
+						"type": "address"
+					}
+				],
+				"name": "setNewProposal",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "newImplementation",
+						"type": "address"
+					}
+				],
+				"name": "upgradeTo",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "newImplementation",
+						"type": "address"
+					},
+					{
+						"internalType": "bytes",
+						"name": "data",
+						"type": "bytes"
+					}
+				],
+				"name": "upgradeToAndCall",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "uint256",
@@ -224,8 +354,34 @@
 			}
 		],
 		"devdoc": {
+			"events": {
+				"AdminChanged(address,address)": {
+					"details": "Emitted when the admin account has changed."
+				},
+				"BeaconUpgraded(address)": {
+					"details": "Emitted when the beacon is changed."
+				},
+				"Initialized(uint8)": {
+					"details": "Triggered when the contract has been initialized or reinitialized."
+				},
+				"Upgraded(address)": {
+					"details": "Emitted when the implementation is upgraded."
+				}
+			},
 			"kind": "dev",
-			"methods": {},
+			"methods": {
+				"proxiableUUID()": {
+					"details": "Implementation of the ERC1822 {proxiableUUID} function. This returns the storage slot used by the implementation. It is used to validate the implementation's compatibility when performing an upgrade. IMPORTANT: A proxy pointing at a proxiable contract should not be considered proxiable itself, because this risks bricking a proxy that upgrades to it, by delegating to itself until out of gas. Thus it is critical that this function revert if invoked through a proxy. This is guaranteed by the `notDelegated` modifier."
+				},
+				"upgradeTo(address)": {
+					"custom:oz-upgrades-unsafe-allow-reachable": "delegatecall",
+					"details": "Upgrade the implementation of the proxy to `newImplementation`. Calls {_authorizeUpgrade}. Emits an {Upgraded} event."
+				},
+				"upgradeToAndCall(address,bytes)": {
+					"custom:oz-upgrades-unsafe-allow-reachable": "delegatecall",
+					"details": "Upgrade the implementation of the proxy to `newImplementation`, and subsequently execute the function call encoded in `data`. Calls {_authorizeUpgrade}. Emits an {Upgraded} event."
+				}
+			},
 			"version": 1
 		},
 		"userdoc": {
@@ -323,19 +479,19 @@
 			]
 		},
 		"contracts/Jury.sol": {
-			"keccak256": "0xbf7225f8b0fec593f71008ab69c916373117c4399a1639fb5384996cf88c4549",
+			"keccak256": "0x340345b4b44096bb439cfd7a3cd100fa4f2e2d6207c9272756436d4ffe826657",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://3489664f673f755b3daa102abea080f903c8bfd2d7a99077586e28cc9da5ab51",
-				"dweb:/ipfs/QmdduxFEvvkTWjVghuPs36o6LVNmdBNY5aDeVDmbrLe7t6"
+				"bzz-raw://e0ce2d0f0c90d473bdac9a9a86395d07f0d8502ae5306cc318693a93201df880",
+				"dweb:/ipfs/QmTCcGZVWZoTKoH2fUwYrbjcobap5jJAC1T3G5oYM9oNCK"
 			]
 		},
 		"contracts/Proposal.sol": {
-			"keccak256": "0x51b64a72aa90bfcfe7235d8c321f430a4916dd6cc4b8783b38e1ceb2a030a8eb",
+			"keccak256": "0xa20f349b0d8f12bda14bb9e27717ba0275da25366bdacc059f4a459b9ba4bb22",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://d2c875d6bb4176195176ded39463e42b086890b105baa44191626260f862ba5a",
-				"dweb:/ipfs/QmUwrZdzW9urwaEw2HxdmVRZg1pbvntdKF25nv28W4j8be"
+				"bzz-raw://710b134c52590a0081b57e6da1b08239e829ae3bcfaf583c998bd7811a17eac8",
+				"dweb:/ipfs/QmQzA2tTLHiGtZFJEU2Ut61YbTCeviHX58GDLbjVZeJ6CH"
 			]
 		}
 	},

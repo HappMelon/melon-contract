@@ -19,7 +19,7 @@ async function main() {
 
   const melonTokenAddr = "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD";
 
-  // const proposalArt = await deployer.loadArtifact("Proposal");
+  const proposalArt = await deployer.loadArtifact("Proposal");
   // initialize
   // const proposal = await hre.zkUpgrades.deployProxy(
   //   deployer.zkWallet,
@@ -27,18 +27,17 @@ async function main() {
   //   [melonTokenAddr],
   //   { initializer: "initialize" }
   // );
+
   // update implementation
-  // const proposal = await hre.zkUpgrades.upgradeProxy(
-  //   deployer.zkWallet,
-  //   "0xD27846d59667A7410880fEe153C801Ca41466b20",
-  //   proposalArt
-  // );
+  const proposal = await hre.zkUpgrades.upgradeProxy(
+    deployer.zkWallet,
+    "0x6CD3582FeFa064067D70F2479C97CA7551E5c506",
+    proposalArt
+  );
 
-  // await proposal.waitForDeployment();
-
-  // const proposalAddr = await proposal.getAddress();
-
-  // console.log("proposalAddr:", proposalAddr);
+  await proposal.waitForDeployment();
+  const proposalAddr = await proposal.getAddress();
+  console.log("proposalAddr:", proposalAddr);
 
   //   // nft
   //   const melonNftArt = await deployer.loadArtifact("MelonNft");
@@ -47,18 +46,18 @@ async function main() {
   //   console.log("melonNft:", melonNftAddr);
 
 
-  const proposalAddr = "0x6CD3582FeFa064067D70F2479C97CA7551E5c506";
+  // const proposalAddr = "0x6CD3582FeFa064067D70F2479C97CA7551E5c506";
     // jury
-  const juryArt = await deployer.loadArtifact("Jury");
+  // const juryArt = await deployer.loadArtifact("Jury");
 
-  const jury = await hre.zkUpgrades.deployProxy(
-    deployer.zkWallet,
-    juryArt,
-    [proposalAddr],
-    { initializer: "initialize" }
-  );
-  const juryAddr = await jury.getAddress();
-  console.log("jury:", juryAddr);
+  // const jury = await hre.zkUpgrades.deployProxy(
+  //   deployer.zkWallet,
+  //   juryArt,
+  //   [proposalAddr],
+  //   { initializer: "initialize" }
+  // );
+  // const juryAddr = await jury.getAddress();
+  // console.log("jury:", juryAddr);
 
   //   // JuryNFTSwap
   //   const juryNftSwapArt = await deployer.loadArtifact("JuryNFTSwap");
