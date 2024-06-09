@@ -21,6 +21,12 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 amount;
     }
 
+    struct PledgeInfo {
+        uint deadline;
+        uint margins;
+        uint amount;
+    }
+
     event Deposited(address indexed user, uint256 amount);
 
     event Voted(
@@ -32,17 +38,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     event Withdraw(address indexed user, uint256 amount, uint256 balance);
 
-    event Create(
-        address indexed founder,
-        uint256 indexed id,
-        string[] options
-    );
+    event Create(address indexed founder, uint256 indexed id, string[] options);
 
-    event Settle(
-        uint256 proposalId,
-        uint256 winningOptionId,
-        address[] jurors
-    );
+    event Settle(uint256 proposalId, uint256 winningOptionId, address[] jurors);
 
     event ExchangePoints(address indexed user, uint256 points);
 
@@ -53,6 +51,13 @@ contract Proposal is Initializable, UUPSUpgradeable {
         address[] jurors,
         uint256 reward,
         uint256 rewardPerJuror
+    );
+
+    event NewPledge(
+        address indexed user,
+        uint256 deadline,
+        uint256 margins,
+        uint256 amount
     );
 
     error InsufficientBalance(address user, uint256 availableBalance);
@@ -72,8 +77,11 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     mapping(address => uint256) public votingLock; // The amount voted by the user
 
-    mapping(uint256 => mapping(uint256 => VoteInfo[]))
-        public voting;
+    mapping(address => uint256) public pledgeLock; // The amount stack by the user
+
+    mapping(address => PledgeInfo[]) public pledgeInfos;
+
+    mapping(uint256 => mapping(uint256 => VoteInfo[])) public voting;
 
     mapping(uint256 => uint256) public winningOption; // Record the winning options for settled proposals
 
@@ -98,6 +106,38 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 optionId
     ) external view returns (VoteInfo[] memory) {
         return voting[proposalId][optionId];
+    }
+
+    function createPledge(uint times, uint margins, uint amount) external {
+        IERC20(mlnTokenAddr).transferFrom(msg.sender, address(this), amount);
+
+        uint deadline = block.timestamp + times * 1 seconds;
+
+        PledgeInfo memory pledgeInfo = PledgeInfo(deadline, margins, amount);
+
+        pledgeInfos[msg.sender].push(pledgeInfo);
+
+        pledgeLock[msg.sender] += amount;
+
+        emit NewPledge(msg.sender, deadline, margins, amount);
+    }
+
+    function clearPledge(address user) external {
+        uint256 totalAmount = 0;
+        for (uint256 i = 0; i < pledgeInfos[user].length; i++) {
+            PledgeInfo memory info = pledgeInfos[user][i];
+
+            if (info.deadline < block.timestamp) {
+                totalAmount += (info.amount * (100 + info.margins)) / 100;
+                removePledge(i);
+                pledgeLock[user] -= info.amount;
+            }
+        }
+        balances[user] += totalAmount;
+    }
+
+    function getPledges() external view returns (PledgeInfo[] memory) {
+        return pledgeInfos[msg.sender];
     }
 
     function deposit(uint256 amount) external returns (uint256) {
@@ -179,7 +219,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
             IERC20(mlnTokenAddr).transfer(msg.sender, amount),
             "Transfer failed"
         );
-        
+
         balances[msg.sender] -= amount;
         emit Withdraw(msg.sender, amount, balances[msg.sender]);
     }
@@ -199,9 +239,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
         proposal.options[optionId].count += amount;
         proposal.options[optionId].voters += 1;
 
-        voting[proposalId][optionId].push(
-            VoteInfo(msg.sender, amount)
-        );
+        voting[proposalId][optionId].push(VoteInfo(msg.sender, amount));
 
         emit Voted(msg.sender, proposalId, optionId, amount);
     }
@@ -225,7 +263,38 @@ contract Proposal is Initializable, UUPSUpgradeable {
             handleMultiOptionProposal(proposalId, winOptionId);
         }
         winningOption[proposalId] = winOptionId;
+    }
 
+    function getAvailableBalance(address user) public view returns (uint256) {
+        uint256 totalBalance = balances[user];
+        uint256 totalLocked = votingLock[user];
+        return totalBalance - totalLocked;
+    }
+
+    function isSingleOptionProposal(
+        uint256 proposalId,
+        uint256 winOptionId
+    ) internal view returns (bool) {
+        ProposalInfo memory proposalInfo = proposalInfos[proposalId];
+        Option[] memory options = proposalInfo.options;
+        for (uint256 i = 0; i < options.length; i++) {
+            if (i != winOptionId && options[i].count > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function removePledge(uint256 index) internal {
+        require(index < pledgeInfos[msg.sender].length, "Index out of bounds");
+
+        uint256 lastIndex = pledgeInfos[msg.sender].length - 1;
+
+        if (index != lastIndex) {
+            pledgeInfos[msg.sender][index] = pledgeInfos[msg.sender][lastIndex];
+        }
+
+        pledgeInfos[msg.sender].pop();
     }
 
     function handleJurorsDistributeRewards(
@@ -254,8 +323,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 proposalId,
         uint256 winOptionId
     ) internal {
-        mapping(uint256 => VoteInfo[])
-            storage voteRecords = voting[winOptionId];
+        mapping(uint256 => VoteInfo[]) storage voteRecords = voting[
+            winOptionId
+        ];
 
         for (uint256 i = 0; i < voteRecords[winOptionId].length; i++) {
             VoteInfo memory voteInfo = voteRecords[winOptionId][i];
@@ -271,8 +341,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
         ProposalInfo storage proposalInfo = proposalInfos[proposalId];
         uint256 optionCount = proposalInfo.options.length;
 
-        mapping(uint256 => VoteInfo[])
-            storage voteRecords = voting[winOptionId];
+        mapping(uint256 => VoteInfo[]) storage voteRecords = voting[
+            winOptionId
+        ];
 
         (, , uint256[] memory counts, , uint256 allVotesCast, ) = getDetails(
             proposalId
@@ -312,36 +383,13 @@ contract Proposal is Initializable, UUPSUpgradeable {
                 userProposalResults[proposalId][voteInfo.user] = int256(
                     rewardExcludingPrincipal
                 );
-            
             } else {
                 balances[voteInfo.user] -= voteInfo.amount;
                 userProposalResults[proposalId][voteInfo.user] =
                     int256(voteInfo.amount) *
                     -1;
-               
             }
         }
-    }
-
-    function getAvailableBalance(address user) public view returns (uint256) {
-        uint256 totalBalance = balances[user];
-        uint256 lockedForVoting = votingLock[user];
-        uint256 totalLocked = lockedForVoting;
-        return totalBalance - totalLocked;
-    }
-
-    function isSingleOptionProposal(
-        uint256 proposalId,
-        uint256 winOptionId
-    ) internal view returns (bool) {
-        ProposalInfo memory proposalInfo = proposalInfos[proposalId];
-        Option[] memory options = proposalInfo.options;
-        for (uint256 i = 0; i < options.length; i++) {
-            if (i != winOptionId && options[i].count > 0) {
-                return false;
-            }
-        }
-        return true;
     }
 
     function _authorizeUpgrade(
