@@ -76,10 +76,10 @@ async function main() {
   const deployer = new Deployer(hre, wallet);
 
   await deployMelonNft(deployer);
-  await deployJuryNftSwap(
-    deployer,
-    "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD"
-  );
+  // await deployJuryNftSwap(
+  //   deployer,
+  //   "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD"
+  // );
 }
 
 main().catch((error) => {
