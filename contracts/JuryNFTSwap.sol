@@ -15,7 +15,6 @@ contract JuryNFTSwap is IERC721Receiver {
         uint price;
     }
 
-    Jury public jury;
     MelonToken public melonToken;
     Info[] public infos;
 
@@ -63,9 +62,8 @@ contract JuryNFTSwap is IERC721Receiver {
         _;
     }
 
-    constructor(address token, address _jury) {
+    constructor(address token) {
         melonToken = MelonToken(token);
-        jury = Jury(_jury);
     }
 
     function getAllListing()
