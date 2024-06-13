@@ -38,7 +38,7 @@ describe("Test", function () {
   var allLinks = AliPics.concat(HarshPics, MyicahelPics, KietPics);
 
   let juryMembersA, juryMembersB, juryMembersC, juryMembersD;
-  let melonToken, juryProxy, juryNFTSwap, melonNft;
+  let melonToken, juryNFTSwap, melonNft;
 
   this.beforeEach(async function () {
     [juryMembersA, juryMembersB, juryMembersC, juryMembersD] =
@@ -59,20 +59,10 @@ describe("Test", function () {
       }
     );
 
-    let juryFactory = await ethers.getContractFactory("Jury");
-
-    juryProxy = await upgrades.deployProxy(
-      juryFactory,
-      [proposalProxy.target],
-      {
-        kind: "uups",
-        initializer: "initialize",
-      }
-    );
+   
 
     juryNFTSwap = await ethers.deployContract("JuryNFTSwap", [
-      melonToken.target,
-      juryProxy.target,
+      melonToken.target
     ]);
 
     // init 10 nft
