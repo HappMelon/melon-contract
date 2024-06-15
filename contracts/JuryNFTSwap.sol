@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./Jury.sol";
 import "./MelonToken.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 contract JuryNFTSwap is IERC721Receiver {
-    
     struct Info {
         address nftAddr;
         uint tokenId;
         uint price;
+        string uri;
     }
 
     MelonToken public melonToken;
@@ -32,8 +30,8 @@ contract JuryNFTSwap is IERC721Receiver {
 
     event Redeem(
         address indexed redeemer,
-        address  nftAddress,
-        uint  tokenId,
+        address nftAddress,
+        uint tokenId,
         uint redeemPrice
     );
 
@@ -46,15 +44,13 @@ contract JuryNFTSwap is IERC721Receiver {
     );
 
     modifier isListed(address nftAddress, uint tokenId) {
-        Info memory curListing = nftListings[nftAddress][
-            tokenId
-        ];
+        Info memory curListing = nftListings[nftAddress][tokenId];
         require(curListing.price > 0, "Current NFT has no listed!");
         _;
     }
 
     modifier isOwner(address nftAddress, uint tokenId) {
-        IERC721 nft = IERC721(nftAddress);
+        ERC721URIStorage nft = ERC721URIStorage(nftAddress);
         require(
             nft.ownerOf(tokenId) == msg.sender,
             "This NFT is not belong to current address!"
@@ -69,7 +65,7 @@ contract JuryNFTSwap is IERC721Receiver {
     function getAllListing()
         external
         view
-        returns (Info[] memory, uint totalInfo)
+        returns (Info[] memory, uint)
     {
         return (infos, infos.length);
     }
@@ -88,7 +84,7 @@ contract JuryNFTSwap is IERC721Receiver {
         uint tokenId,
         uint price
     ) public isOwner(nftAddr, tokenId) {
-        IERC721 nft = IERC721(nftAddr);
+        ERC721URIStorage nft = ERC721URIStorage(nftAddr);
 
         if (nftListings[nftAddr][tokenId].price > 0) {
             revert HasListed(nftAddr, tokenId);
@@ -99,7 +95,8 @@ contract JuryNFTSwap is IERC721Receiver {
         Info memory newListing = Info({
             price: price,
             nftAddr: nftAddr,
-            tokenId: tokenId
+            tokenId: tokenId,
+            uri: ERC721URIStorage(nftAddr).tokenURI(tokenId)
         });
 
         nftListings[nftAddr][tokenId] = newListing;
@@ -111,7 +108,7 @@ contract JuryNFTSwap is IERC721Receiver {
         address nftAddr,
         uint tokenId
     ) external isListed(nftAddr, tokenId) {
-        IERC721 nft = IERC721(nftAddr);
+        ERC721URIStorage nft = ERC721URIStorage(nftAddr);
 
         Info memory curListing = nftListings[nftAddr][tokenId];
 
@@ -126,7 +123,7 @@ contract JuryNFTSwap is IERC721Receiver {
         emit BuyNFT(msg.sender, nftAddr, tokenId, curListing.price);
     }
 
-    function redeem(address nftAddr, uint tokenId, uint price) external {        
+    function redeem(address nftAddr, uint tokenId, uint price) external {
         hangOut(nftAddr, tokenId, price);
         melonToken.transfer(msg.sender, (price * 98) / 100);
         emit Redeem(msg.sender, nftAddr, tokenId, price);

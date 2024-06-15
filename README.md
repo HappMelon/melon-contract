@@ -21,7 +21,7 @@ https://app.txsync.io/bridge
 - jury
 0x9Fe47058CC28eD2D4927Bd501076277665f64A7C
 - juryNftSwap  
-0x18eB2E9eb234A70450Cd8a476597024cdF28b5c1
+0xB26110058Aa04F62B80Ce2c2cEa218a116485F39
 
 # Architecture diagram
 ![alt text](image-2.png)
@@ -31,14 +31,16 @@ https://app.txsync.io/bridge
 
 # Steps for deploying ZkSync test network
 > `npx  hardhat deploy-zksync --script index.js --network zkSyncTestnet` （Error reporting： `Error in plugin @matterlabs/hardhat-zksync-deploy: Deploy function does not exist or exported invalidly.`，Temporarily abandoned）
-1. First initialization `npx hardhat run deploy/index.js` 
-2. [view contract](https://sepolia.explorer.zksync.io/)
-3. [verify](https://docs.zksync.io/build/tooling/hardhat/hardhat-zksync-verify.html#commands)
-`npx  hardhat verify --network zkSyncTestnet  ${Contract address}  ${Construction parameters}`
-# Replace logical contract
-[Subsequent replacement of logical contracts](https://docs.zksync.io/build/tooling/hardhat/hardhat-zksync-upgradable.html#upgradable-examples)
+1. deploy  
+`npx hardhat run deploy/index.js` 
+2. verify  
+`npx  hardhat verify --network zk_test  ${Contract address}  ${Construction parameters}`
 
 
+# doc
+https://docs.zksync.io/build/tooling/hardhat  
+https://sepolia.explorer.zksync.io/  
+https://docs.zksync.io/build/tooling/hardhat/hardhat-zksync-upgradable.html#upgradable-examples
 
 # Sample Hardhat Project
 This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
