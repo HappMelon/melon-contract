@@ -1,73 +1,181 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Jury.sol";
 import "./MelonToken.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "./MelonNFT.sol";
+import "./Proposal.sol";
 
-contract JuryNFTSwap is IERC721Receiver {
+contract JuryNFTSwap is IERC721Receiver, Ownable {
     struct Info {
-        address nftAddr;
         uint tokenId;
         uint price;
         string uri;
     }
 
     MelonToken public melonToken;
+
+    MelonNFT public melonNFT;
+
+    Proposal public proposal;
+
     Info[] public infos;
 
-    // nftAddress => tokenId => Info
-    mapping(address => mapping(uint => Info)) public nftListings;
+    mapping(uint => Info) public infoByTokenId;
 
-    event HangOut(address indexed nftAddress, uint indexed tokenId, uint price);
+    event HangOut(uint indexed tokenId, uint price);
 
-    event BuyNFT(
-        address indexed buyer,
-        address nftAddress,
-        uint tokenId,
-        uint price
-    );
+    event StartUpNFTSending(address indexed buyer, uint tokenId, uint price);
 
-    event Redeem(
-        address indexed redeemer,
-        address nftAddress,
-        uint tokenId,
-        uint redeemPrice
-    );
+    event BuyNFT(address indexed buyer, uint tokenId, uint price);
 
-    error HasListed(address nftAddress, uint tokenId);
+    event Redeem(address indexed redeemer, uint tokenId, uint redeemPrice);
+
+    error NotListed(uint tokenId);
+
+    error AlreadyListed(uint tokenId);
 
     error RedemptionTimeNotReached(
-        address nftAddress,
+        address NFTAddr,
         uint tokenId,
         uint redemptionTime
     );
 
-    modifier isListed(address nftAddress, uint tokenId) {
-        Info memory curListing = nftListings[nftAddress][tokenId];
-        require(curListing.price > 0, "Current NFT has no listed!");
+    error NotPledger(address pledger);
+
+    error NotNFTOwner(address user, uint tokenId);
+
+    error MaximumNumberOfHoldings(address user, uint holdAmount);
+
+    modifier isListed(uint tokenId) {
+        if (bytes(infoByTokenId[tokenId].uri).length == 0) {
+            revert NotListed(tokenId);
+        }
         _;
     }
 
-    modifier isOwner(address nftAddress, uint tokenId) {
-        ERC721URIStorage nft = ERC721URIStorage(nftAddress);
-        require(
-            nft.ownerOf(tokenId) == msg.sender,
-            "This NFT is not belong to current address!"
-        );
+    modifier isUnListed(uint tokenId) {
+        if (bytes(infoByTokenId[tokenId].uri).length > 0) {
+            revert AlreadyListed(tokenId);
+        }
         _;
     }
 
-    constructor(address token) {
-        melonToken = MelonToken(token);
+    modifier isOwner(address user, uint tokenId) {
+        if (melonNFT.ownerOf(tokenId) != user) {
+            revert NotNFTOwner(user, tokenId);
+        }
+        _;
     }
 
-    function getAllListing()
-        external
-        view
-        returns (Info[] memory, uint)
-    {
+    modifier isPledger(address user) {
+        uint pledgeLock = proposal.pledgeLock(user);
+        if (pledgeLock == 0) {
+            revert NotPledger(user);
+        }
+        _;
+    }
+
+    constructor(
+        address _tokenAddr,
+        address _melonNFTAddr,
+        address _proposalAddr
+    ) Ownable() {
+        melonToken = MelonToken(_tokenAddr);
+        melonNFT = MelonNFT(_melonNFTAddr);
+        proposal = Proposal(_proposalAddr);
+    }
+
+    function getAllListing() external view returns (Info[] memory, uint) {
         return (infos, infos.length);
+    }
+
+    function issuanceStartUpNFT(
+        uint tokenId,
+        address pledger
+    ) external isPledger(pledger) isListed(tokenId) {
+        Info memory info = infoByTokenId[tokenId];
+
+        melonNFT.safeTransferFrom(address(this), pledger, tokenId);
+
+        handleRemove(infos, tokenId);
+
+        delete infoByTokenId[tokenId];
+
+        emit StartUpNFTSending(pledger, tokenId, info.price);
+    }
+
+    function initialNFTHangOut(
+        uint tokenId,
+        uint price
+    ) public isOwner(msg.sender, tokenId) isUnListed(tokenId) onlyOwner {
+        // Ensure the NFT is owned by the contract
+        melonNFT.safeTransferFrom(msg.sender, address(this), tokenId);
+
+        // Fetch the URI of the NFT
+        string memory uri = melonNFT.tokenURI(tokenId);
+
+        // Create a new listing
+        Info memory newListing = Info({
+            tokenId: tokenId,
+            price: price,
+            uri: uri
+        });
+
+        // Store the listing information
+        infos.push(newListing);
+        infoByTokenId[tokenId] = newListing;
+
+        // Emit the event
+        emit HangOut(tokenId, price);
+    }
+
+    function purchaseCommonNFT(uint tokenId) external isListed(tokenId) {
+        uint balance = melonNFT.balanceOf(msg.sender);
+
+        if (balance >= 3) {
+            revert MaximumNumberOfHoldings(msg.sender, balance);
+        }
+
+        Info memory info = infoByTokenId[tokenId];
+
+        melonToken.transferFrom(msg.sender, address(this), info.price);
+
+        melonNFT.safeTransferFrom(address(this), msg.sender, tokenId);
+
+        delete infoByTokenId[tokenId];
+
+        handleRemove(infos, tokenId);
+
+        emit BuyNFT(msg.sender, tokenId, info.price);
+    }
+
+    function redeem(
+        uint tokenId,
+        uint price
+    ) external isOwner(msg.sender, tokenId) isUnListed(tokenId) {
+        // Ensure the NFT is owned by the contract
+        melonNFT.safeTransferFrom(msg.sender, address(this), tokenId);
+
+        // Fetch the URI of the NFT
+        string memory uri = melonNFT.tokenURI(tokenId);
+
+        // Create a new listing
+        Info memory newListing = Info({
+            tokenId: tokenId,
+            price: price,
+            uri: uri
+        });
+
+        // Store the listing information
+        infos.push(newListing);
+
+        infoByTokenId[tokenId] = newListing;
+
+        melonToken.transfer(msg.sender, (price * 98) / 100);
+
+        emit Redeem(msg.sender, tokenId, price);
     }
 
     function onERC721Received(
@@ -79,67 +187,11 @@ contract JuryNFTSwap is IERC721Receiver {
         return this.onERC721Received.selector;
     }
 
-    function hangOut(
-        address nftAddr,
-        uint tokenId,
-        uint price
-    ) public isOwner(nftAddr, tokenId) {
-        ERC721URIStorage nft = ERC721URIStorage(nftAddr);
-
-        if (nftListings[nftAddr][tokenId].price > 0) {
-            revert HasListed(nftAddr, tokenId);
-        }
-
-        nft.safeTransferFrom(msg.sender, address(this), tokenId);
-
-        Info memory newListing = Info({
-            price: price,
-            nftAddr: nftAddr,
-            tokenId: tokenId,
-            uri: ERC721URIStorage(nftAddr).tokenURI(tokenId)
-        });
-
-        nftListings[nftAddr][tokenId] = newListing;
-        infos.push(newListing);
-        emit HangOut(nftAddr, tokenId, price);
-    }
-
-    function buy(
-        address nftAddr,
-        uint tokenId
-    ) external isListed(nftAddr, tokenId) {
-        ERC721URIStorage nft = ERC721URIStorage(nftAddr);
-
-        Info memory curListing = nftListings[nftAddr][tokenId];
-
-        handleRemove(infos, nftAddr, tokenId);
-
-        melonToken.transferFrom(msg.sender, address(this), curListing.price);
-
-        nft.safeTransferFrom(address(this), msg.sender, tokenId);
-
-        delete nftListings[nftAddr][tokenId];
-
-        emit BuyNFT(msg.sender, nftAddr, tokenId, curListing.price);
-    }
-
-    function redeem(address nftAddr, uint tokenId, uint price) external {
-        hangOut(nftAddr, tokenId, price);
-        melonToken.transfer(msg.sender, (price * 98) / 100);
-        emit Redeem(msg.sender, nftAddr, tokenId, price);
-    }
-
-    function handleRemove(
-        Info[] storage listings,
-        address nftAddr,
-        uint tokenId
-    ) internal {
-        for (uint i = 0; i < listings.length; i++) {
-            if (
-                listings[i].nftAddr == nftAddr && listings[i].tokenId == tokenId
-            ) {
-                listings[i] = listings[listings.length - 1];
-                listings.pop();
+    function handleRemove(Info[] storage infos, uint tokenId) internal {
+        for (uint i = 0; i < infos.length; i++) {
+            if (infos[i].tokenId == tokenId) {
+                infos[i] = infos[infos.length - 1];
+                infos.pop();
                 break;
             }
         }

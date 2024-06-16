@@ -37,20 +37,16 @@ describe("Test", function () {
 
   var allLinks = AliPics.concat(HarshPics, MyicahelPics, KietPics);
 
-  let juryMembersA, juryMembersB, juryMembersC, juryMembersD;
-  let melonToken, juryNFTSwap, melonNft;
+  async function deployContractsFixture() {
+    const [juror, userA, userB, userC] = await ethers.getSigners();
 
-  this.beforeEach(async function () {
-    [juryMembersA, juryMembersB, juryMembersC, juryMembersD] =
-      await ethers.getSigners();
+    const melonToken = await ethers.deployContract("MelonToken");
 
-    melonToken = await ethers.deployContract("MelonToken");
+    const melonNft = await ethers.deployContract("MelonNFT");
 
-    melonNft = await ethers.deployContract("MelonNft");
+    const proposalFactory = await ethers.getContractFactory("Proposal");
 
-    let proposalFactory = await ethers.getContractFactory("Proposal");
-
-    proposalProxy = await upgrades.deployProxy(
+    const proposalProxy = await upgrades.deployProxy(
       proposalFactory,
       [melonToken.target],
       {
@@ -59,74 +55,111 @@ describe("Test", function () {
       }
     );
 
-   
-
-    juryNFTSwap = await ethers.deployContract("JuryNFTSwap", [
-      melonToken.target
+    const juryNFTSwap = await ethers.deployContract("JuryNFTSwap", [
+      melonToken.target,
+      melonNft.target,
+      proposalProxy.target,
     ]);
 
     // init 10 nft
-    for (let i = 0; i < 3; i++) {
-      await melonNft.mint(juryMembersA.address, allLinks[i]);
+    for (let i = 0; i < 5; i++) {
+      await melonNft.mint(juror.address, allLinks[i]);
     }
 
     // apove all nft to juryNFTSwap
     await melonNft.setApprovalForAll(juryNFTSwap.target, true);
 
-    for (let i = 0; i < 3; i++) {
-      await juryNFTSwap.hangOut(melonNft.target, i, ethers.parseEther("10"));
+    for (let i = 0; i < 5; i++) {
+      if (i < 2) {
+        await juryNFTSwap.initialNFTHangOut(i, ethers.parseEther("0"));
+      }else{
+        await juryNFTSwap.initialNFTHangOut(i, ethers.parseEther("10"));
+
+      }
+
     }
 
     // Cast 100 tokens per account
     let mintAmount = ethers.parseEther("100");
-    await melonToken.mint(juryMembersA.address, mintAmount);
-    await melonToken.mint(juryMembersB.address, mintAmount);
-    await melonToken.mint(juryMembersC.address, mintAmount);
-    await melonToken.mint(juryMembersD.address, mintAmount);
+    await melonToken.mint(juror.address, mintAmount);
+    await melonToken.mint(userA.address, mintAmount);
+    await melonToken.mint(userB.address, mintAmount);
+    await melonToken.mint(userC.address, mintAmount);
 
     // approve
     await melonToken
-      .connect(juryMembersA)
+      .connect(juror)
+      .approve(proposalProxy.target, ethers.parseEther("100"));
+    await melonToken
+      .connect(userA)
       .approve(juryNFTSwap.target, ethers.parseEther("100"));
     await melonToken
-      .connect(juryMembersB)
+      .connect(userB)
       .approve(juryNFTSwap.target, ethers.parseEther("100"));
     await melonToken
-      .connect(juryMembersC)
+      .connect(userC)
       .approve(juryNFTSwap.target, ethers.parseEther("100"));
-    await melonToken
-      .connect(juryMembersD)
-      .approve(juryNFTSwap.target, ethers.parseEther("100"));
+
+    await proposalProxy.createPledge(60, 20, 50);
+
+    console.log("before allListing", await juryNFTSwap.getAllListing());
+
+    return {
+      juror,
+      userA,
+      userB,
+      userC,
+      melonToken,
+      juryNFTSwap,
+      melonNft,
+      proposalProxy,
+    };
+  }
+
+  it("Beginning NFT Acquisition", async function () {
+    const {
+      juror,
+      userA,
+      userB,
+      userC,
+      melonToken,
+      juryNFTSwap,
+      melonNft,
+      proposalProxy,
+    } = await loadFixture(deployContractsFixture);
+
+    await juryNFTSwap.connect(juror).issuanceStartUpNFT(0n, juror.address);
+
+    console.log("0 NFT Owner", await melonNft.ownerOf(0n));
+    console.log("after allListing", await juryNFTSwap.getAllListing());
   });
 
-  it("hangOut", async function () {
-    // B buy
-    await juryNFTSwap.connect(juryMembersB).buy(melonNft.target, 1n);
-    console.log(
-      "B_NFT_Balance",
-      await melonNft.balanceOf(juryMembersB.address)
-    );
-    console.log(
-      "B_Balance",
-      ethers.formatEther(await melonToken.balanceOf(juryMembersB.address))
-    );
-    console.log("allListing", await juryNFTSwap.getAllListing());
+  it("Ordinary NFT Purchase and Redemption", async function () {
+    const {
+      juror,
+      userA,
+      userB,
+      userC,
+      melonToken,
+      juryNFTSwap,
+      melonNft,
+      proposalProxy,
+    } = await loadFixture(deployContractsFixture);
 
-    await melonNft
-      .connect(juryMembersB)
-      .setApprovalForAll(juryNFTSwap.target, true);
-    console.log("begin redeem");
-    // B redeem
-    await juryNFTSwap
-      .connect(juryMembersB)
-      .redeem(melonNft.target, 1n, ethers.parseEther("10"));
-    console.log(
-      "B_NFT_Balance",
-      await melonNft.balanceOf(juryMembersB.address)
+    await juryNFTSwap.connect(userA).purchaseCommonNFT(2n);
+    expect(await melonNft.ownerOf(2n)).to.equal(userA.address);
+    expect(await melonToken.balanceOf(userA.address)).to.equal(
+      ethers.parseEther("90")
     );
-    console.log(
-      "B_Balance",
-      ethers.formatEther(await melonToken.balanceOf(juryMembersB.address))
+    console.log("after purchaseCommonNFT", await juryNFTSwap.getAllListing());
+
+    await melonNft.connect(userA).setApprovalForAll(juryNFTSwap.target, true);
+    await juryNFTSwap.connect(userA).redeem(2n, ethers.parseEther("10"));
+    expect(await melonNft.ownerOf(2n)).to.equal(juryNFTSwap.target);
+    // console.log("userA balance:", await melonToken.balanceOf(userA.address));
+    expect(await melonToken.balanceOf(userA.address)).to.equal(
+      ethers.parseEther("99.8")
     );
+    console.log("after redeem", await juryNFTSwap.getAllListing());
   });
 });

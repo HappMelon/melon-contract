@@ -53,16 +53,25 @@ async function deployJury(deployer, proposalAddr) {
 }
 
 async function deployMelonNft(deployer) {
-  const melonNftArt = await deployer.loadArtifact("MelonNft");
+  const melonNftArt = await deployer.loadArtifact("MelonNFT");
   const melonNft = await deployer.deploy(melonNftArt);
   const melonNftAddr = await melonNft.getAddress();
   console.log("melonNft:", melonNftAddr);
   return melonNftAddr;
 }
 
-async function deployJuryNftSwap(deployer, melonTokenAddr) {
+async function deployJuryNftSwap(
+  deployer,
+  melonTokenAddr,
+  melonNFTAddr,
+  proposalAddr
+) {
   const juryNftSwapArt = await deployer.loadArtifact("JuryNFTSwap");
-  const juryNftSwap = await deployer.deploy(juryNftSwapArt, [melonTokenAddr]);
+  const juryNftSwap = await deployer.deploy(juryNftSwapArt, [
+    melonTokenAddr,
+    melonNFTAddr,
+    proposalAddr,
+  ]);
   const juryNftSwapAddr = await juryNftSwap.getAddress();
   console.log("juryNftSwap:", juryNftSwapAddr);
   return juryNftSwapAddr;
@@ -75,10 +84,12 @@ async function main() {
   const wallet = new Wallet(privateKey);
   const deployer = new Deployer(hre, wallet);
 
-  // await deployMelonNft(deployer);
+  let melonNFTAddr = await deployMelonNft(deployer);
   await deployJuryNftSwap(
     deployer,
-    "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD"
+    "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD",
+    melonNFTAddr,
+    "0x6CD3582FeFa064067D70F2479C97CA7551E5c506"
   );
 }
 

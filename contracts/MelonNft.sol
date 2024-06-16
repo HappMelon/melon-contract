@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 
-contract MelonNft is ERC721URIStorage, Ownable  {
+contract MelonNFT is ERC721URIStorage, Ownable  {
     uint256 private _nextTokenId;
 
     event MintNFT(address indexed to, uint256 tokenId);
@@ -17,6 +17,12 @@ contract MelonNft is ERC721URIStorage, Ownable  {
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
         emit MintNFT(to, tokenId);
+    }
+
+    function burn(uint tokenId) external {
+        require(ownerOf(tokenId) == msg.sender, "You are not the owner of this token");
+        _burn(tokenId);
+        return;
     }
 
 }
