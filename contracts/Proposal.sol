@@ -108,10 +108,13 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return voting[proposalId][optionId];
     }
 
-    function createPledge(uint times, uint margins, uint amount) external {
-        IERC20(mlnTokenAddr).transferFrom(msg.sender, address(this), amount);
+    function createPledge(uint deadline, uint margins, uint amount) external {
+        require(
+            deadline > block.timestamp,
+            "Deadline must be greater than current time"
+        );
 
-        uint deadline = block.timestamp + times * 1 seconds;
+        IERC20(mlnTokenAddr).transferFrom(msg.sender, address(this), amount);
 
         PledgeInfo memory pledgeInfo = PledgeInfo(deadline, margins, amount);
 

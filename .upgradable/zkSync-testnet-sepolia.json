@@ -40,6 +40,11 @@
       "address": "0x9Fe47058CC28eD2D4927Bd501076277665f64A7C",
       "txHash": "0xe2dcd430cfc04e0b62708d2c7e4109777edec916582981b3ae6d6b7af1f407ea",
       "kind": "uups"
+    },
+    {
+      "address": "0xfc5c951abe2cb439e4C5090f2f73D0db1A2d5C4B",
+      "txHash": "0x86f7d49a1a6cb50da1f4be1593c4b1491865dae712304405a8f5375fd96a7087",
+      "kind": "uups"
     }
   ],
   "impls": {
@@ -1782,6 +1787,275 @@
             "numberOfBytes": "64"
           },
           "t_struct(VoteInfo)6679_storage": {
+            "label": "struct Proposal.VoteInfo",
+            "members": [
+              {
+                "label": "user",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
+    },
+    "65f8a28649fc749f9ab713c1293ae151766af5c231de8a29c0c510a616e94c91": {
+      "address": "0x2B1A2F8145aBDB12E05A274B4C82147D78D3BeC8",
+      "txHash": "0x6b9de7e3086685fc4ea677fab116888e25f04e790ac736c67c8f5c00a187a525",
+      "layout": {
+        "solcVersion": "0.8.24",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts\\proxy\\utils\\Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts\\proxy\\utils\\Initializable.sol:68"
+          },
+          {
+            "label": "owner",
+            "offset": 2,
+            "slot": "0",
+            "type": "t_address",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:68"
+          },
+          {
+            "label": "logicAddress",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_address",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:70"
+          },
+          {
+            "label": "mlnTokenAddr",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_address",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:72"
+          },
+          {
+            "label": "proposalInfos",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_array(t_struct(ProposalInfo)6729_storage)dyn_storage",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:74"
+          },
+          {
+            "label": "balances",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:76"
+          },
+          {
+            "label": "votingLock",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:78"
+          },
+          {
+            "label": "pledgeLock",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:80"
+          },
+          {
+            "label": "pledgeInfos",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_mapping(t_address,t_array(t_struct(PledgeInfo)6741_storage)dyn_storage)",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:82"
+          },
+          {
+            "label": "voting",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_mapping(t_uint256,t_mapping(t_uint256,t_array(t_struct(VoteInfo)6734_storage)dyn_storage))",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:84"
+          },
+          {
+            "label": "winningOption",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_uint256,t_uint256)",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:86"
+          },
+          {
+            "label": "userProposalResults",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_int256))",
+            "contract": "Proposal",
+            "src": "contracts\\Proposal.sol:88"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_struct(Option)6722_storage)dyn_storage": {
+            "label": "struct Proposal.Option[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_struct(PledgeInfo)6741_storage)dyn_storage": {
+            "label": "struct Proposal.PledgeInfo[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_struct(ProposalInfo)6729_storage)dyn_storage": {
+            "label": "struct Proposal.ProposalInfo[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_struct(VoteInfo)6734_storage)dyn_storage": {
+            "label": "struct Proposal.VoteInfo[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_array(t_struct(PledgeInfo)6741_storage)dyn_storage)": {
+            "label": "mapping(address => struct Proposal.PledgeInfo[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_int256)": {
+            "label": "mapping(address => int256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_array(t_struct(VoteInfo)6734_storage)dyn_storage)": {
+            "label": "mapping(uint256 => struct Proposal.VoteInfo[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_int256))": {
+            "label": "mapping(uint256 => mapping(address => int256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_uint256,t_array(t_struct(VoteInfo)6734_storage)dyn_storage))": {
+            "label": "mapping(uint256 => mapping(uint256 => struct Proposal.VoteInfo[]))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Option)6722_storage": {
+            "label": "struct Proposal.Option",
+            "members": [
+              {
+                "label": "desc",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "count",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "voters",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(PledgeInfo)6741_storage": {
+            "label": "struct Proposal.PledgeInfo",
+            "members": [
+              {
+                "label": "deadline",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "margins",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(ProposalInfo)6729_storage": {
+            "label": "struct Proposal.ProposalInfo",
+            "members": [
+              {
+                "label": "founder",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "options",
+                "type": "t_array(t_struct(Option)6722_storage)dyn_storage",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(VoteInfo)6734_storage": {
             "label": "struct Proposal.VoteInfo",
             "members": [
               {

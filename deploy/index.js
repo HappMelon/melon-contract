@@ -28,7 +28,7 @@ async function upgradeProposal(deployer, proposalProxyAddr) {
 
 async function deployProposal(deployer, melonTokenAddr) {
   const proposalArt = await deployer.loadArtifact("Proposal");
-  const proposal = await deployer.deployProxy(
+  const proposal = await hre.zkUpgrades.deployProxy(
     deployer.zkWallet,
     proposalArt,
     [melonTokenAddr],
@@ -83,14 +83,16 @@ async function main() {
   console.log("privateKey:", privateKey);
   const wallet = new Wallet(privateKey);
   const deployer = new Deployer(hre, wallet);
+// proposal
+  await deployProposal(deployer, "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD");
 
-  let melonNFTAddr = await deployMelonNft(deployer);
-  await deployJuryNftSwap(
-    deployer,
-    "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD",
-    melonNFTAddr,
-    "0x6CD3582FeFa064067D70F2479C97CA7551E5c506"
-  );
+  // let melonNFTAddr = await deployMelonNft(deployer);
+  // await deployJuryNftSwap(
+  //   deployer,
+  //   "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD",
+  //   melonNFTAddr,
+  //   "0x6CD3582FeFa064067D70F2479C97CA7551E5c506"
+  // );
 }
 
 main().catch((error) => {
