@@ -60,6 +60,13 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 amount
     );
 
+    event PledgeCleared(
+        address indexed user,
+        uint256 principal,
+        uint256 interest,
+        uint256 totalAmount
+    );
+
     error InsufficientBalance(address user, uint256 availableBalance);
 
     error OwnableUnauthorizedAccount(address account);
@@ -126,17 +133,24 @@ contract Proposal is Initializable, UUPSUpgradeable {
     }
 
     function clearPledge(address user) external {
-        uint256 totalAmount = 0;
+         uint256 totalAmount = 0;
+        uint256 principalAmount = 0;
+        uint256 interestAmount = 0;
+
         for (uint256 i = 0; i < pledgeInfos[user].length; i++) {
             PledgeInfo memory info = pledgeInfos[user][i];
 
             if (info.deadline < block.timestamp) {
-                totalAmount += (info.amount * (100 + info.margins)) / 100;
+                uint256 amountWithInterest = (info.amount * (100 + info.margins)) / 100;
+                principalAmount += info.amount;
+                interestAmount += amountWithInterest - info.amount;
+                totalAmount += amountWithInterest;
                 removePledge(i);
                 pledgeLock[user] -= info.amount;
             }
         }
         balances[user] += totalAmount;
+        emit PledgeCleared(user, principalAmount, interestAmount, totalAmount);
     }
 
     function getPledges() external view returns (PledgeInfo[] memory) {

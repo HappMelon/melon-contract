@@ -87,12 +87,15 @@ async function main() {
   // await deployProposal(deployer, "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD");
 
   // let melonNFTAddr = await deployMelonNft(deployer);
-  await deployJuryNftSwap(
-    deployer,
-    process.env.MELON_TOKEN,
-    process.env.MELON_NFT,
-    process.env.PROPOSAL_PROXY
-  );
+  // await deployJuryNftSwap(
+  //   deployer,
+  //   process.env.MELON_TOKEN,
+  //   process.env.MELON_NFT,
+  //   process.env.PROPOSAL_PROXY
+  // );
+
+
+  await upgradeProposal(deployer, process.env.PROPOSAL_PROXY);
 }
 
 main().catch((error) => {
