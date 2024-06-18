@@ -84,15 +84,15 @@ async function main() {
   const wallet = new Wallet(privateKey);
   const deployer = new Deployer(hre, wallet);
 // proposal
-  await deployProposal(deployer, "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD");
+  // await deployProposal(deployer, "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD");
 
   // let melonNFTAddr = await deployMelonNft(deployer);
-  // await deployJuryNftSwap(
-  //   deployer,
-  //   "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD",
-  //   melonNFTAddr,
-  //   "0x6CD3582FeFa064067D70F2479C97CA7551E5c506"
-  // );
+  await deployJuryNftSwap(
+    deployer,
+    process.env.MELON_TOKEN,
+    process.env.MELON_NFT,
+    process.env.PROPOSAL_PROXY
+  );
 }
 
 main().catch((error) => {
