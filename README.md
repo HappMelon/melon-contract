@@ -21,7 +21,7 @@ https://app.txsync.io/bridge
 - jury
 0x9Fe47058CC28eD2D4927Bd501076277665f64A7C
 - juryNftSwap  
-0x52c772516884198EC6f15eb344Ed516f77eB06EE
+0x0e5Ff911Cb0cC723c7B312D4c4Dd1870451B2CbE
 
 # Architecture diagram
 ![alt text](image-2.png)

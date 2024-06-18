@@ -79,7 +79,7 @@ describe("Proposal", function () {
       .connect(proposalCreatorAccount)
       .approve(proposalProxy.target, ethers.parseEther("100"));
 
-      // Each account deposits 50 tokens into the contract
+    // Each account deposits 50 tokens into the contract
     await proposalProxy.connect(accountA).deposit(ethers.parseEther("50"));
     await proposalProxy.connect(accountB).deposit(ethers.parseEther("50"));
     await proposalProxy.connect(accountC).deposit(ethers.parseEther("50"));
@@ -146,7 +146,6 @@ describe("Proposal", function () {
   //   console.log("rewardAmount", ethers.formatEther(rewardAmount));
   // });
 
-
   it("add new pledge", async function () {
     await proposalProxy.createPledge(1n, 20n, ethers.parseEther("2"));
 
@@ -157,22 +156,15 @@ describe("Proposal", function () {
     let pledges = await proposalProxy.connect(accountA).getPledges();
     console.log("pledges:", pledges);
 
-
     let pledgeLock = await proposalProxy.pledgeLock(accountA.address);
     let balances = await proposalProxy.balances(accountA.address);
 
     console.log("pledgeLock:", pledgeLock);
     console.log("balances:", balances);
-
-
-  })
+  });
 
   function sleepSync(ms) {
     const end = Date.now() + ms;
     while (Date.now() < end) continue;
-}
-
-
-  
-
+  }
 });
