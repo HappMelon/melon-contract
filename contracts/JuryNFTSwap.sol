@@ -20,6 +20,7 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
     Proposal public proposal;
     Info[] public infos;
     mapping(uint => Info) public infoByTokenId;
+    mapping(address => Info[]) public userPurchasedNFTs; // 新增映射，存储用户已购买的NFT
 
     event HangOut(uint indexed tokenId, uint price);
     event StartUpNFTSending(address indexed buyer, uint tokenId, uint price);
@@ -68,24 +69,12 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         proposal = Proposal(_proposalAddr);
     }
 
-    // 新增函数，返回用户拥有的NFT详情
-    function getUserNFTDetails(address user) external view returns (Info[] memory) {
-        uint balance = melonNFT.balanceOf(user);
-        Info[] memory userNFTs = new Info[](balance);
-
-        uint index = 0;
-        for (uint i = 0; i < infos.length; i++) {
-            if (melonNFT.ownerOf(infos[i].tokenId) == user) {
-                userNFTs[index] = infos[i];
-                index++;
-            }
-        }
-
-        return userNFTs;
-    }
-
     function getAllListing() external view returns (Info[] memory, uint) {
         return (infos, infos.length);
+    }
+
+    function getUserPurchasedNFTDetails(address user) external view returns (Info[] memory) {
+        return userPurchasedNFTs[user];
     }
 
     function issuanceStartUpNFT(uint tokenId, address pledger) external isPledger(pledger) isListed(tokenId) {
@@ -133,9 +122,13 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
 
         // 更新获取时间
         info.acquisitionTime = block.timestamp;
-        infoByTokenId[tokenId] = info;
 
+        // 存储到用户已购买NFT的映射中
+        userPurchasedNFTs[msg.sender].push(info);
+
+        // 从挂出的NFT列表中移除
         handleRemove(infos, tokenId);
+        delete infoByTokenId[tokenId];
 
         emit BuyNFT(msg.sender, tokenId, info.price);
     }
@@ -175,5 +168,6 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         }
     }
 
+    // 新增函数，返回用户已购买的NFT详情
     
 }

@@ -66,17 +66,15 @@ describe("Test", function () {
       await melonNft.mint(juror.address, allLinks[i]);
     }
 
-    // apove all nft to juryNFTSwap
+    // approve all nft to juryNFTSwap
     await melonNft.setApprovalForAll(juryNFTSwap.target, true);
 
     for (let i = 0; i < 5; i++) {
       if (i < 2) {
         await juryNFTSwap.initialNFTHangOut(i, ethers.parseEther("0"));
-      }else{
+      } else {
         await juryNFTSwap.initialNFTHangOut(i, ethers.parseEther("10"));
-
       }
-
     }
 
     // Cast 100 tokens per account
@@ -100,7 +98,7 @@ describe("Test", function () {
       .connect(userC)
       .approve(juryNFTSwap.target, ethers.parseEther("100"));
 
-    await proposalProxy.createPledge(60, 20, 50);
+    await proposalProxy.createPledge((await time.latest()) + 30, 20, 50);
 
     console.log("before allListing", await juryNFTSwap.getAllListing());
 
@@ -156,10 +154,36 @@ describe("Test", function () {
     await melonNft.connect(userA).setApprovalForAll(juryNFTSwap.target, true);
     await juryNFTSwap.connect(userA).redeem(2n, ethers.parseEther("10"));
     expect(await melonNft.ownerOf(2n)).to.equal(juryNFTSwap.target);
-    // console.log("userA balance:", await melonToken.balanceOf(userA.address));
     expect(await melonToken.balanceOf(userA.address)).to.equal(
       ethers.parseEther("99.8")
     );
     console.log("after redeem", await juryNFTSwap.getAllListing());
+  });
+
+  it("Check Purchased NFT Details", async function () {
+    const {
+      juror,
+      userA,
+      userB,
+      userC,
+      melonToken,
+      juryNFTSwap,
+      melonNft,
+      proposalProxy,
+    } = await loadFixture(deployContractsFixture);
+
+    await juryNFTSwap.connect(userA).purchaseCommonNFT(2n);
+    const purchasedNFTs = await juryNFTSwap.getUserPurchasedNFTDetails(
+      userA.address
+    );
+
+    expect(purchasedNFTs.length).to.equal(1);
+    expect(purchasedNFTs[0].tokenId).to.equal(2);
+    expect(purchasedNFTs[0].price).to.equal(ethers.parseEther("10"));
+    expect(purchasedNFTs[0].uri).to.equal(
+      "https://ipfs.filebase.io/ipfs/QmRs3fNGpwkXfYkcojDrV8inp3NGWAX9Cj41Y1321ZTpoL"
+    );
+
+    console.log("Purchased NFT Details for userA", purchasedNFTs);
   });
 });
