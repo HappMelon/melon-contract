@@ -147,7 +147,9 @@ describe("Proposal", function () {
   // });
 
   it("add new pledge", async function () {
-    await proposalProxy.createPledge(1n, 20n, ethers.parseEther("2"));
+    let curTimestamp = await time.latest();
+
+    await proposalProxy.createPledge(curTimestamp + 30, 20n, ethers.parseEther("2"));
 
     // sleepSync(3000);
 
@@ -156,6 +158,9 @@ describe("Proposal", function () {
     let pledges = await proposalProxy.connect(accountA).getPledges();
     console.log("pledges:", pledges);
 
+    let pledgeStats = await proposalProxy.connect(accountA).getPledgeStats();
+    console.log("pledgeStats:", pledgeStats);
+
     let pledgeLock = await proposalProxy.pledgeLock(accountA.address);
     let balances = await proposalProxy.balances(accountA.address);
 
@@ -163,8 +168,5 @@ describe("Proposal", function () {
     console.log("balances:", balances);
   });
 
-  function sleepSync(ms) {
-    const end = Date.now() + ms;
-    while (Date.now() < end) continue;
-  }
+
 });

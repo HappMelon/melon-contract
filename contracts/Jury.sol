@@ -19,6 +19,7 @@ contract Jury is Initializable, UUPSUpgradeable {
 
     address public proposalAddr;
     address public impleAddr;
+    
     mapping(uint256 => JuryInfo) public juryInfos;
 
     error JuryHasBeenCreated(uint256 proposalId);

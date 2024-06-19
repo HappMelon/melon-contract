@@ -94,6 +94,10 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     mapping(uint256 => mapping(address => int256)) public userProposalResults; // Record rewards or punishments for settlement proposal users
 
+    uint256 public totalPledgedAmount; 
+
+    uint256 public totalPledgers;
+
     // Modifier
     modifier onlyOwner() {
         if (owner != msg.sender) {
@@ -125,11 +129,20 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
         PledgeInfo memory pledgeInfo = PledgeInfo(deadline, margins, amount);
 
-        pledgeInfos[msg.sender].push(pledgeInfo);
+        // Increase the number of pledging users if they are pledging for the first time
+        if (pledgeLock[msg.sender] == 0) {
+            totalPledgers++;
+        }
 
+        pledgeInfos[msg.sender].push(pledgeInfo);
         pledgeLock[msg.sender] += amount;
+        totalPledgedAmount += amount;
 
         emit NewPledge(msg.sender, deadline, margins, amount);
+    }
+
+    function getPledgeStats() external view returns (uint256, uint256) {
+        return (totalPledgers, totalPledgedAmount);
     }
 
     function clearPledge(address user) external {
