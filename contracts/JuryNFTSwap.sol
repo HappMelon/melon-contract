@@ -2,8 +2,6 @@
 pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Jury.sol";
-import "./MelonToken.sol";
 import "./MelonNFT.sol";
 import "./Proposal.sol";
 
@@ -15,22 +13,32 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         uint acquisitionTime; // 新增字段，记录获取时间
     }
 
-    MelonToken public melonToken;
+    struct ApplyStartUpNFTInfo {
+        uint pledgeAmount;
+        address user;
+    }
+
     MelonNFT public melonNFT;
-    Proposal public proposal;
     Info[] public infos;
+    ApplyStartUpNFTInfo[] public applyStartUpNFTInfos;
+
+    mapping(address => uint) public nftLock;
     mapping(uint => Info) public infoByTokenId;
-    mapping(address => Info[]) public userPurchasedNFTs; // 新增映射，存储用户已购买的NFT
+    mapping(address => Info[]) public userPurchasedNFTs;
 
     event HangOut(uint indexed tokenId, uint price);
     event StartUpNFTSending(address indexed buyer, uint tokenId, uint price);
     event BuyNFT(address indexed buyer, uint tokenId, uint price);
     event Redeem(address indexed redeemer, uint tokenId, uint redeemPrice);
+    event ApplyStartUpNFT(address indexed user, uint pledgeAmount);
 
     error NotListed(uint tokenId);
     error AlreadyListed(uint tokenId);
-    error RedemptionTimeNotReached(address NFTAddr, uint tokenId, uint redemptionTime);
-    error NotPledger(address pledger);
+    error RedemptionTimeNotReached(
+        address NFTAddr,
+        uint tokenId,
+        uint redemptionTime
+    );
     error NotNFTOwner(address user, uint tokenId);
     error MaximumNumberOfHoldings(address user, uint holdAmount);
 
@@ -55,41 +63,72 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         _;
     }
 
-    modifier isPledger(address user) {
-        uint pledgeLock = proposal.pledgeLock(user);
-        if (pledgeLock == 0) {
-            revert NotPledger(user);
-        }
-        _;
-    }
-
-    constructor(address _tokenAddr, address _melonNFTAddr, address _proposalAddr) Ownable() {
-        melonToken = MelonToken(_tokenAddr);
+    constructor(address _melonNFTAddr) Ownable() {
         melonNFT = MelonNFT(_melonNFTAddr);
-        proposal = Proposal(_proposalAddr);
     }
 
     function getAllListing() external view returns (Info[] memory, uint) {
         return (infos, infos.length);
     }
 
-    function getUserPurchasedNFTDetails(address user) external view returns (Info[] memory) {
+    function getUserPurchasedNFTDetails(
+        address user
+    ) external view returns (Info[] memory) {
         return userPurchasedNFTs[user];
     }
 
-    function issuanceStartUpNFT(uint tokenId, address pledger) external isPledger(pledger) isListed(tokenId) {
-        Info memory info = infoByTokenId[tokenId];
+    function distributeStartUpNFT(
+        address[] memory users,
+        uint[] memory tokenIds
+    ) external onlyOwner {
+        require(
+            users.length == tokenIds.length,
+            "Users and tokenIds array lengths must match"
+        );
 
-        melonNFT.safeTransferFrom(address(this), pledger, tokenId);
+        // Clear all apply locks
+        clearApplyLock();
 
-        handleRemove(infos, tokenId);
+        // Process each user
+        for (uint i = 0; i < users.length; i++) {
+            address user = users[i];
+            uint tokenId = tokenIds[i];
 
-        delete infoByTokenId[tokenId];
+            // Check if the NFT is listed
+            Info storage info = infoByTokenId[tokenId];
+            if (bytes(info.uri).length == 0) {
+                revert NotListed(tokenId);
+            }
 
-        emit StartUpNFTSending(pledger, tokenId, info.price);
+            // Transfer the NFT to the user
+            melonNFT.safeTransferFrom(address(this), user, tokenId);
+
+            // Clear the listing information
+            delete infoByTokenId[tokenId];
+
+            // Update the user's purchased NFTs list
+            userPurchasedNFTs[user].push(info);
+
+            // Remove the NFT from the infos array
+            handleRemove(infos, tokenId);
+
+            // Emit event for sending the start-up NFT
+            emit StartUpNFTSending(user, tokenId, info.price);
+        }
     }
 
-    function initialNFTHangOut(uint tokenId, uint price) public isOwner(msg.sender, tokenId) isUnListed(tokenId) onlyOwner {
+    function applyStartUpNFT(uint pledgeAmount) external {
+        applyStartUpNFTInfos.push(
+            ApplyStartUpNFTInfo({pledgeAmount: pledgeAmount, user: msg.sender})
+        );
+        nftLock[msg.sender] = pledgeAmount;
+        emit ApplyStartUpNFT(msg.sender, pledgeAmount);
+    }
+
+    function initialNFTHangOut(
+        uint tokenId,
+        uint price
+    ) public isOwner(msg.sender, tokenId) isUnListed(tokenId) onlyOwner {
         melonNFT.safeTransferFrom(msg.sender, address(this), tokenId);
 
         string memory uri = melonNFT.tokenURI(tokenId);
@@ -107,7 +146,10 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         emit HangOut(tokenId, price);
     }
 
-    function purchaseCommonNFT(uint tokenId) external isListed(tokenId) {
+    function purchaseCommonNFT(
+        uint tokenId,
+        Proposal proposal
+    ) external isListed(tokenId) {
         uint balance = melonNFT.balanceOf(msg.sender);
 
         if (balance >= 3) {
@@ -116,7 +158,12 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
 
         Info memory info = infoByTokenId[tokenId];
 
-        melonToken.transferFrom(msg.sender, address(this), info.price);
+        require(
+            proposal.getAvailableBalance(msg.sender) >= info.price,
+            "Insufficient balance"
+        );
+
+        nftLock[msg.sender] += info.price;
 
         melonNFT.safeTransferFrom(address(this), msg.sender, tokenId);
 
@@ -133,7 +180,10 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         emit BuyNFT(msg.sender, tokenId, info.price);
     }
 
-    function redeem(uint tokenId, uint price) external isOwner(msg.sender, tokenId) isUnListed(tokenId) {
+    function redeem(
+        uint tokenId,
+        uint price
+    ) external isOwner(msg.sender, tokenId) isUnListed(tokenId) {
         melonNFT.safeTransferFrom(msg.sender, address(this), tokenId);
 
         string memory uri = melonNFT.tokenURI(tokenId);
@@ -149,12 +199,17 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
 
         infoByTokenId[tokenId] = newListing;
 
-        melonToken.transfer(msg.sender, (price * 98) / 100);
+        nftLock[msg.sender] -= (price * 98) / 100;
 
         emit Redeem(msg.sender, tokenId, price);
     }
 
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external pure override returns (bytes4) {
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external pure override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
@@ -168,6 +223,11 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         }
     }
 
-    // 新增函数，返回用户已购买的NFT详情
-    
+    function clearApplyLock() internal {
+        uint applyCount = applyStartUpNFTInfos.length;
+        for (uint i = 0; i < applyCount; i++) {
+            ApplyStartUpNFTInfo storage applyInfo = applyStartUpNFTInfos[i];
+            nftLock[applyInfo.user] -= applyInfo.pledgeAmount;
+        }
+    }
 }

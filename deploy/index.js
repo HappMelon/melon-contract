@@ -26,12 +26,12 @@ async function upgradeProposal(deployer, proposalProxyAddr) {
   return newProposalAddr;
 }
 
-async function deployProposal(deployer, melonTokenAddr) {
+async function deployProposal(deployer, melonTokenAddr, juryNFTSwapAddr, pledgeAddr) {
   const proposalArt = await deployer.loadArtifact("Proposal");
   const proposal = await hre.zkUpgrades.deployProxy(
     deployer.zkWallet,
     proposalArt,
-    [melonTokenAddr],
+    [melonTokenAddr, juryNFTSwapAddr, pledgeAddr],
     { initializer: "initialize" }
   );
   const proposalAddr = await proposal.getAddress();
@@ -52,6 +52,14 @@ async function deployJury(deployer, proposalAddr) {
   return juryAddr;
 }
 
+async function deployPledge(deployer) {
+  const pledgeArt = await deployer.loadArtifact("Pledge");
+  const pledge = await deployer.deploy(pledgeArt);
+  const pledgeAddr = await pledge.getAddress();
+  console.log("pledgeAddr:", pledgeAddr);
+  return pledgeAddr;
+}
+
 async function deployMelonNft(deployer) {
   const melonNftArt = await deployer.loadArtifact("MelonNFT");
   const melonNft = await deployer.deploy(melonNftArt);
@@ -62,15 +70,11 @@ async function deployMelonNft(deployer) {
 
 async function deployJuryNftSwap(
   deployer,
-  melonTokenAddr,
   melonNFTAddr,
-  proposalAddr
 ) {
   const juryNftSwapArt = await deployer.loadArtifact("JuryNFTSwap");
   const juryNftSwap = await deployer.deploy(juryNftSwapArt, [
-    melonTokenAddr,
-    melonNFTAddr,
-    proposalAddr,
+    melonNFTAddr
   ]);
   const juryNftSwapAddr = await juryNftSwap.getAddress();
   console.log("juryNftSwap:", juryNftSwapAddr);
@@ -83,8 +87,13 @@ async function main() {
   console.log("privateKey:", privateKey);
   const wallet = new Wallet(privateKey);
   const deployer = new Deployer(hre, wallet);
+
+
+  let pledgeAddr = await deployPledge(deployer);
+  let juryNftSwapAddr = await deployJuryNftSwap(deployer, process.env.MELON_NFT);
+
 // proposal
-  // await deployProposal(deployer, "0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD");
+  await deployProposal(deployer, process.env.MELON_TOKEN, pledgeAddr, juryNftSwapAddr);
 
   // let melonNFTAddr = await deployMelonNft(deployer);
   // await deployJuryNftSwap(
@@ -92,10 +101,10 @@ async function main() {
   //   process.env.MELON_TOKEN,
   //   process.env.MELON_NFT,
   //   process.env.PROPOSAL_PROXY
-  // );
+  // );             
 
 
-  await upgradeProposal(deployer, process.env.PROPOSAL_PROXY);
+  // await upgradeProposal(deployer, process.env.PROPOSAL_PROXY);
 }
 
 main().catch((error) => {

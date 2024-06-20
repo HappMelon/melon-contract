@@ -14,14 +14,16 @@ https://app.txsync.io/bridge
 ## zksync testnet
 - melonToken  
 0xDf77D063Cf7BdBf2D8167B18e511c82b6cE6d1DD
-- proposalAddr  
-0xfc5c951abe2cb439e4C5090f2f73D0db1A2d5C4B
+- proposal  
+0x06abC8ebFf5b434a3814f7fC3555A239A8DEf20a
 - melonNft  
 0x7Bc2518502Ec55F4a0CFD5679fC34d8CBaFd6B2E
 - jury
 0x9Fe47058CC28eD2D4927Bd501076277665f64A7C
 - juryNftSwap  
-0x0e5Ff911Cb0cC723c7B312D4c4Dd1870451B2CbE
+0x2f40A2D2bdeA45f7C60B1B7480FA206149011a0d
+- pledge  
+0xa11362d508C8Df19c8fA5529F6163683464F365a
 
 # Architecture diagram
 ![alt text](image-2.png)

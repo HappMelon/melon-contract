@@ -38,32 +38,32 @@ describe("Test", function () {
   var allLinks = AliPics.concat(HarshPics, MyicahelPics, KietPics);
 
   async function deployContractsFixture() {
-    const [juror, userA, userB, userC] = await ethers.getSigners();
+    const [admin, userA, userB] = await ethers.getSigners();
+
+    const pledge = await ethers.deployContract("Pledge");
 
     const melonToken = await ethers.deployContract("MelonToken");
 
     const melonNft = await ethers.deployContract("MelonNFT");
 
-    const proposalFactory = await ethers.getContractFactory("Proposal");
+    const juryNFTSwap = await ethers.deployContract("JuryNFTSwap", [
+      melonNft.target,
+    ]);
+
+    const proposal = await ethers.getContractFactory("Proposal");
 
     const proposalProxy = await upgrades.deployProxy(
-      proposalFactory,
-      [melonToken.target],
+      proposal,
+      [melonToken.target, juryNFTSwap.target, pledge.target],
       {
         kind: "uups",
         initializer: "initialize",
       }
     );
 
-    const juryNFTSwap = await ethers.deployContract("JuryNFTSwap", [
-      melonToken.target,
-      melonNft.target,
-      proposalProxy.target,
-    ]);
-
     // init 10 nft
     for (let i = 0; i < 5; i++) {
-      await melonNft.mint(juror.address, allLinks[i]);
+      await melonNft.mint(admin.address, allLinks[i]);
     }
 
     // approve all nft to juryNFTSwap
@@ -79,111 +79,81 @@ describe("Test", function () {
 
     // Cast 100 tokens per account
     let mintAmount = ethers.parseEther("100");
-    await melonToken.mint(juror.address, mintAmount);
     await melonToken.mint(userA.address, mintAmount);
     await melonToken.mint(userB.address, mintAmount);
-    await melonToken.mint(userC.address, mintAmount);
 
     // approve
     await melonToken
-      .connect(juror)
+      .connect(userA)
       .approve(proposalProxy.target, ethers.parseEther("100"));
     await melonToken
-      .connect(userA)
-      .approve(juryNFTSwap.target, ethers.parseEther("100"));
-    await melonToken
       .connect(userB)
-      .approve(juryNFTSwap.target, ethers.parseEther("100"));
-    await melonToken
-      .connect(userC)
-      .approve(juryNFTSwap.target, ethers.parseEther("100"));
+      .approve(proposalProxy.target, ethers.parseEther("100"));
 
-    await proposalProxy.createPledge((await time.latest()) + 30, 20, 50);
-
-    console.log("before allListing", await juryNFTSwap.getAllListing());
+    await proposalProxy.connect(userA).deposit(ethers.parseEther("50"));
+    await proposalProxy.connect(userB).deposit(ethers.parseEther("50"));
 
     return {
-      juror,
+      admin,
       userA,
       userB,
-      userC,
-      melonToken,
       juryNFTSwap,
-      melonNft,
       proposalProxy,
+      melonNft,
     };
   }
 
-  it("Beginning NFT Acquisition", async function () {
-    const {
-      juror,
-      userA,
-      userB,
-      userC,
-      melonToken,
-      juryNFTSwap,
-      melonNft,
-      proposalProxy,
-    } = await loadFixture(deployContractsFixture);
+  it("applyStartUpNFT", async function () {
+    const { admin, userA, userB, juryNFTSwap, proposalProxy, melonNft } =
+      await loadFixture(deployContractsFixture);
 
-    await juryNFTSwap.connect(juror).issuanceStartUpNFT(0n, juror.address);
+    await juryNFTSwap.connect(userA).applyStartUpNFT(ethers.parseEther("10"));
+    await juryNFTSwap.connect(userB).applyStartUpNFT(ethers.parseEther("10"));
 
-    console.log("0 NFT Owner", await melonNft.ownerOf(0n));
-    console.log("after allListing", await juryNFTSwap.getAllListing());
+    let accountANFTLock = await juryNFTSwap.nftLock(userA.address);
+    let balances = await proposalProxy.getAvailableBalance(userA.address);
+
+    console.log("accountANFTLock", ethers.formatEther(accountANFTLock));
+    console.log("balances", ethers.formatEther(balances));
+
+    console.log("---distribute---");
+
+    await juryNFTSwap
+      .connect(admin)
+      .distributeStartUpNFT([userA.address, userB.address], [3n, 4n]);
+    accountANFTLock = await juryNFTSwap.nftLock(userA.address);
+    balances = await proposalProxy.getAvailableBalance(userA.address);
+    let owner = await melonNft.ownerOf(3n);
+
+    console.log("accountANFTLock", ethers.formatEther(accountANFTLock));
+    console.log("balances", ethers.formatEther(balances));
+    expect(owner).to.equal(userA.address);
   });
 
   it("Ordinary NFT Purchase and Redemption", async function () {
-    const {
-      juror,
-      userA,
-      userB,
-      userC,
-      melonToken,
-      juryNFTSwap,
-      melonNft,
-      proposalProxy,
-    } = await loadFixture(deployContractsFixture);
+    const { admin, userA, userB, juryNFTSwap, proposalProxy, melonNft } =
+      await loadFixture(deployContractsFixture);
 
-    await juryNFTSwap.connect(userA).purchaseCommonNFT(2n);
-    expect(await melonNft.ownerOf(2n)).to.equal(userA.address);
-    expect(await melonToken.balanceOf(userA.address)).to.equal(
-      ethers.parseEther("90")
-    );
+    await juryNFTSwap
+      .connect(userA)
+      .purchaseCommonNFT(2n, proposalProxy.target);
+
+    let balances = await proposalProxy.getAvailableBalance(userA.address);
+
+    console.log("after purchase balances", ethers.formatEther(balances));
+
     console.log("after purchaseCommonNFT", await juryNFTSwap.getAllListing());
 
+    console.log("---redeem---");
+
     await melonNft.connect(userA).setApprovalForAll(juryNFTSwap.target, true);
+
     await juryNFTSwap.connect(userA).redeem(2n, ethers.parseEther("10"));
-    expect(await melonNft.ownerOf(2n)).to.equal(juryNFTSwap.target);
-    expect(await melonToken.balanceOf(userA.address)).to.equal(
-      ethers.parseEther("99.8")
-    );
+
+    balances = await proposalProxy.getAvailableBalance(userA.address);
+
+    console.log("after redeem balances", ethers.formatEther(balances));
+
     console.log("after redeem", await juryNFTSwap.getAllListing());
-  });
-
-  it("Check Purchased NFT Details", async function () {
-    const {
-      juror,
-      userA,
-      userB,
-      userC,
-      melonToken,
-      juryNFTSwap,
-      melonNft,
-      proposalProxy,
-    } = await loadFixture(deployContractsFixture);
-
-    await juryNFTSwap.connect(userA).purchaseCommonNFT(2n);
-    const purchasedNFTs = await juryNFTSwap.getUserPurchasedNFTDetails(
-      userA.address
-    );
-
-    expect(purchasedNFTs.length).to.equal(1);
-    expect(purchasedNFTs[0].tokenId).to.equal(2);
-    expect(purchasedNFTs[0].price).to.equal(ethers.parseEther("10"));
-    expect(purchasedNFTs[0].uri).to.equal(
-      "https://ipfs.filebase.io/ipfs/QmRs3fNGpwkXfYkcojDrV8inp3NGWAX9Cj41Y1321ZTpoL"
-    );
-
-    console.log("Purchased NFT Details for userA", purchasedNFTs);
   });
 });

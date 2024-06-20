@@ -3,6 +3,9 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./JuryNFTSwap.sol";
+import "./MelonToken.sol";
+import "./Pledge.sol";
 
 contract Proposal is Initializable, UUPSUpgradeable {
     struct Option {
@@ -19,12 +22,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
     struct VoteInfo {
         address user;
         uint256 amount;
-    }
-
-    struct PledgeInfo {
-        uint deadline;
-        uint margins;
-        uint amount;
     }
 
     event Deposited(address indexed user, uint256 amount);
@@ -53,20 +50,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 rewardPerJuror
     );
 
-    event NewPledge(
-        address indexed user,
-        uint256 deadline,
-        uint256 margins,
-        uint256 amount
-    );
-
-    event PledgeCleared(
-        address indexed user,
-        uint256 principal,
-        uint256 interest,
-        uint256 totalAmount
-    );
-
     error InsufficientBalance(address user, uint256 availableBalance);
 
     error OwnableUnauthorizedAccount(address account);
@@ -76,7 +59,11 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     address public logicAddress;
 
-    address public mlnTokenAddr; // Token Address
+    MelonToken public mlnToken; // Token Address
+
+    JuryNFTSwap public juryNFTSwap;
+
+    Pledge public pledge;
 
     ProposalInfo[] public proposalInfos; // Proposal array
 
@@ -84,19 +71,11 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     mapping(address => uint256) public votingLock; // The amount voted by the user
 
-    mapping(address => uint256) public pledgeLock; // The amount stack by the user
-
-    mapping(address => PledgeInfo[]) public pledgeInfos;
-
     mapping(uint256 => mapping(uint256 => VoteInfo[])) public voting;
 
     mapping(uint256 => uint256) public winningOption; // Record the winning options for settled proposals
 
     mapping(uint256 => mapping(address => int256)) public userProposalResults; // Record rewards or punishments for settlement proposal users
-
-    uint256 public totalPledgedAmount; 
-
-    uint256 public totalPledgers;
 
     // Modifier
     modifier onlyOwner() {
@@ -107,9 +86,33 @@ contract Proposal is Initializable, UUPSUpgradeable {
     }
 
     // function
-    function initialize(address tokenAddr) external initializer {
-        mlnTokenAddr = tokenAddr;
+    function initialize(
+        address _tokenAddr,
+        address _juryNFTSwapAddr,
+        address _pledgeAddr
+    ) external initializer {
+        mlnToken = MelonToken(_tokenAddr);
+        juryNFTSwap = JuryNFTSwap(_juryNFTSwapAddr);
+        pledge = Pledge(_pledgeAddr);
+
         owner = msg.sender;
+    }
+
+    function setNewToken(address _tokenAddr) external onlyOwner {
+        mlnToken = MelonToken(_tokenAddr);
+    }
+
+    function setNewJuryNFTSwap(address _juryNFTSwapAddr) external onlyOwner {
+        juryNFTSwap = JuryNFTSwap(_juryNFTSwapAddr);
+    }
+
+    function setNewPledge(address _pledgeAddr) external onlyOwner {
+        pledge = Pledge(_pledgeAddr);
+    
+    }
+
+    function addInterest(address user, uint interestAmount) external {
+        balances[user] += interestAmount;
     }
 
     function getVoting(
@@ -119,64 +122,9 @@ contract Proposal is Initializable, UUPSUpgradeable {
         return voting[proposalId][optionId];
     }
 
-    function createPledge(uint deadline, uint margins, uint amount) external {
-        require(
-            deadline > block.timestamp,
-            "Deadline must be greater than current time"
-        );
-
-        IERC20(mlnTokenAddr).transferFrom(msg.sender, address(this), amount);
-
-        PledgeInfo memory pledgeInfo = PledgeInfo(deadline, margins, amount);
-
-        // Increase the number of pledging users if they are pledging for the first time
-        if (pledgeLock[msg.sender] == 0) {
-            totalPledgers++;
-        }
-
-        pledgeInfos[msg.sender].push(pledgeInfo);
-        pledgeLock[msg.sender] += amount;
-        totalPledgedAmount += amount;
-
-        emit NewPledge(msg.sender, deadline, margins, amount);
-    }
-
-    function getPledgeStats() external view returns (uint256, uint256) {
-        return (totalPledgers, totalPledgedAmount);
-    }
-
-    function clearPledge(address user) external {
-         uint256 totalAmount = 0;
-        uint256 principalAmount = 0;
-        uint256 interestAmount = 0;
-
-        for (uint256 i = 0; i < pledgeInfos[user].length; i++) {
-            PledgeInfo memory info = pledgeInfos[user][i];
-
-            if (info.deadline < block.timestamp) {
-                uint256 amountWithInterest = (info.amount * (100 + info.margins)) / 100;
-                principalAmount += info.amount;
-                interestAmount += amountWithInterest - info.amount;
-                totalAmount += amountWithInterest;
-                removePledge(i);
-                pledgeLock[user] -= info.amount;
-            }
-        }
-        balances[user] += totalAmount;
-        emit PledgeCleared(user, principalAmount, interestAmount, totalAmount);
-    }
-
-    function getPledges() external view returns (PledgeInfo[] memory) {
-        return pledgeInfos[msg.sender];
-    }
-
     function deposit(uint256 amount) external returns (uint256) {
         require(
-            IERC20(mlnTokenAddr).transferFrom(
-                msg.sender,
-                address(this),
-                amount
-            ),
+            mlnToken.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"
         );
         balances[msg.sender] += amount;
@@ -245,10 +193,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
             revert InsufficientBalance(msg.sender, availableBalance);
         }
 
-        require(
-            IERC20(mlnTokenAddr).transfer(msg.sender, amount),
-            "Transfer failed"
-        );
+        require(mlnToken.transfer(msg.sender, amount), "Transfer failed");
 
         balances[msg.sender] -= amount;
         emit Withdraw(msg.sender, amount, balances[msg.sender]);
@@ -296,9 +241,18 @@ contract Proposal is Initializable, UUPSUpgradeable {
     }
 
     function getAvailableBalance(address user) public view returns (uint256) {
+        uint totalLock = 0;
+
+        uint pledgeLock = pledge.pledgeLock(user);
+        uint nftLock = juryNFTSwap.nftLock(user);
+        uint256 voteLock = votingLock[user];
+
+        totalLock += nftLock;
+        totalLock += voteLock;
+        totalLock += pledgeLock;
+
         uint256 totalBalance = balances[user];
-        uint256 totalLocked = votingLock[user];
-        return totalBalance - totalLocked;
+        return totalBalance - totalLock;
     }
 
     function isSingleOptionProposal(
@@ -313,18 +267,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
             }
         }
         return true;
-    }
-
-    function removePledge(uint256 index) internal {
-        require(index < pledgeInfos[msg.sender].length, "Index out of bounds");
-
-        uint256 lastIndex = pledgeInfos[msg.sender].length - 1;
-
-        if (index != lastIndex) {
-            pledgeInfos[msg.sender][index] = pledgeInfos[msg.sender][lastIndex];
-        }
-
-        pledgeInfos[msg.sender].pop();
     }
 
     function handleJurorsDistributeRewards(
