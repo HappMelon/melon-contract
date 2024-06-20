@@ -89,11 +89,11 @@ async function main() {
   const deployer = new Deployer(hre, wallet);
 
 
-  let pledgeAddr = await deployPledge(deployer);
+  // let pledgeAddr = await deployPledge(deployer);
   let juryNftSwapAddr = await deployJuryNftSwap(deployer, process.env.MELON_NFT);
 
 // proposal
-  await deployProposal(deployer, process.env.MELON_TOKEN, pledgeAddr, juryNftSwapAddr);
+  // await deployProposal(deployer, process.env.MELON_TOKEN, pledgeAddr, juryNftSwapAddr);
 
   // let melonNFTAddr = await deployMelonNft(deployer);
   // await deployJuryNftSwap(

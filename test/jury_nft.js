@@ -111,8 +111,11 @@ describe("Test", function () {
     await juryNFTSwap.connect(userB).applyStartUpNFT(ethers.parseEther("10"));
 
     let accountANFTLock = await juryNFTSwap.nftLock(userA.address);
+    let applyStartUpNFTInfos = await juryNFTSwap.getApplyStartUpNFTInfos();
+
     let balances = await proposalProxy.getAvailableBalance(userA.address);
 
+    console.log("ApplyStartUpNFTInfos:", applyStartUpNFTInfos);
     console.log("accountANFTLock", ethers.formatEther(accountANFTLock));
     console.log("balances", ethers.formatEther(balances));
 

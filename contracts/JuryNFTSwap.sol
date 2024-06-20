@@ -67,6 +67,14 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         melonNFT = MelonNFT(_melonNFTAddr);
     }
 
+    function getApplyStartUpNFTInfos()
+        external
+        view
+        returns (ApplyStartUpNFTInfo[] memory)
+    {
+        return applyStartUpNFTInfos;
+    }
+
     function getAllListing() external view returns (Info[] memory, uint) {
         return (infos, infos.length);
     }
