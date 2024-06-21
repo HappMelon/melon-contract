@@ -18,6 +18,7 @@ module.exports = {
       zksync: true,
       verifyURL:
         "https://explorer.sepolia.era.zksync.dev/contract_verification",
+      accounts: [process.env.WALLET_PRIVATE_KEY],
     },
   },
   zksolc: {

@@ -6,11 +6,11 @@ import "./MelonNFT.sol";
 import "./Proposal.sol";
 
 contract JuryNFTSwap is IERC721Receiver, Ownable {
-    struct Info {
+    struct NFTListInfo {
         uint tokenId;
         uint price;
         string uri;
-        uint acquisitionTime; // 新增字段，记录获取时间
+        uint gainTime;
     }
 
     struct ApplyStartUpNFTInfo {
@@ -18,13 +18,20 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         address user;
     }
 
+    uint public immutable COMMON_NFT_LIMIT_PER_USER;
+    uint public immutable START_UP_NFT_LIMIT;
+
     MelonNFT public melonNFT;
-    Info[] public infos;
+    NFTListInfo[] public startUpNFTs;
+    NFTListInfo[] public commonNFTs;
+
+    mapping(address => NFTListInfo) public userStartUpNFTs;
+    mapping(address => NFTListInfo[]) public userCommonNFTs;
+
     ApplyStartUpNFTInfo[] public applyStartUpNFTInfos;
 
     mapping(address => uint) public nftLock;
-    mapping(uint => Info) public infoByTokenId;
-    mapping(address => Info[]) public userPurchasedNFTs;
+    mapping(uint => NFTListInfo) public infoByTokenId;
 
     event HangOut(uint indexed tokenId, uint price);
     event StartUpNFTSending(address indexed buyer, uint tokenId, uint price);
@@ -63,8 +70,14 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         _;
     }
 
-    constructor(address _melonNFTAddr) Ownable() {
+    constructor(
+        address _melonNFTAddr,
+        uint _commonNFTsLimitPerUser,
+        uint _startUpNFTsLimit
+    ) Ownable() {
         melonNFT = MelonNFT(_melonNFTAddr);
+        COMMON_NFT_LIMIT_PER_USER = _commonNFTsLimitPerUser;
+        START_UP_NFT_LIMIT = _startUpNFTsLimit;
     }
 
     function getApplyStartUpNFTInfos()
@@ -75,14 +88,18 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         return applyStartUpNFTInfos;
     }
 
-    function getAllListing() external view returns (Info[] memory, uint) {
-        return (infos, infos.length);
+    function getAllStartUpNFTs() external view returns (NFTListInfo[] memory) {
+        return startUpNFTs;
     }
 
-    function getUserPurchasedNFTDetails(
+    function getAllCommonNFTs() external view returns (NFTListInfo[] memory) {
+        return commonNFTs;
+    }
+
+    function getUserNFTHolding(
         address user
-    ) external view returns (Info[] memory) {
-        return userPurchasedNFTs[user];
+    ) external view returns (NFTListInfo memory, NFTListInfo[] memory) {
+        return (userStartUpNFTs[user], userCommonNFTs[user]);
     }
 
     function distributeStartUpNFT(
@@ -93,34 +110,19 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
             users.length == tokenIds.length,
             "Users and tokenIds array lengths must match"
         );
-
-        // Clear all apply locks
         clearApplyLock();
-
-        // Process each user
         for (uint i = 0; i < users.length; i++) {
             address user = users[i];
             uint tokenId = tokenIds[i];
-
-            // Check if the NFT is listed
-            Info storage info = infoByTokenId[tokenId];
+            NFTListInfo storage info = infoByTokenId[tokenId];
             if (bytes(info.uri).length == 0) {
                 revert NotListed(tokenId);
             }
-
-            // Transfer the NFT to the user
             melonNFT.safeTransferFrom(address(this), user, tokenId);
-
-            // Clear the listing information
+            info.gainTime = block.timestamp;
+            userStartUpNFTs[user] = info;
             delete infoByTokenId[tokenId];
-
-            // Update the user's purchased NFTs list
-            userPurchasedNFTs[user].push(info);
-
-            // Remove the NFT from the infos array
-            handleRemove(infos, tokenId);
-
-            // Emit event for sending the start-up NFT
+            handleRemove(startUpNFTs, tokenId);
             emit StartUpNFTSending(user, tokenId, info.price);
         }
     }
@@ -137,20 +139,21 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         uint tokenId,
         uint price
     ) public isOwner(msg.sender, tokenId) isUnListed(tokenId) onlyOwner {
+        bool isStartUp = price == 0;
         melonNFT.safeTransferFrom(msg.sender, address(this), tokenId);
-
         string memory uri = melonNFT.tokenURI(tokenId);
-
-        Info memory newListing = Info({
+        NFTListInfo memory newListing = NFTListInfo({
             tokenId: tokenId,
             price: price,
             uri: uri,
-            acquisitionTime: block.timestamp
+            gainTime: 0
         });
-
-        infos.push(newListing);
+        if (isStartUp) {
+            startUpNFTs.push(newListing);
+        } else {
+            commonNFTs.push(newListing);
+        }
         infoByTokenId[tokenId] = newListing;
-
         emit HangOut(tokenId, price);
     }
 
@@ -158,13 +161,13 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         uint tokenId,
         Proposal proposal
     ) external isListed(tokenId) {
-        uint balance = melonNFT.balanceOf(msg.sender);
+        uint balance = userCommonNFTs[msg.sender].length;
 
-        if (balance >= 3) {
+        if (balance >= COMMON_NFT_LIMIT_PER_USER) {
             revert MaximumNumberOfHoldings(msg.sender, balance);
         }
 
-        Info memory info = infoByTokenId[tokenId];
+        NFTListInfo memory info = infoByTokenId[tokenId];
 
         require(
             proposal.getAvailableBalance(msg.sender) >= info.price,
@@ -175,14 +178,11 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
 
         melonNFT.safeTransferFrom(address(this), msg.sender, tokenId);
 
-        // 更新获取时间
-        info.acquisitionTime = block.timestamp;
+        info.gainTime = block.timestamp;
 
-        // 存储到用户已购买NFT的映射中
-        userPurchasedNFTs[msg.sender].push(info);
+        userCommonNFTs[msg.sender].push(info);
 
-        // 从挂出的NFT列表中移除
-        handleRemove(infos, tokenId);
+        handleRemove(startUpNFTs, tokenId);
         delete infoByTokenId[tokenId];
 
         emit BuyNFT(msg.sender, tokenId, info.price);
@@ -190,24 +190,40 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
 
     function redeem(
         uint tokenId,
-        uint price
+        uint price,
+        Proposal proposal
     ) external isOwner(msg.sender, tokenId) isUnListed(tokenId) {
+        bool isStartUp = tokenId < START_UP_NFT_LIMIT;
+
         melonNFT.safeTransferFrom(msg.sender, address(this), tokenId);
 
         string memory uri = melonNFT.tokenURI(tokenId);
 
-        Info memory newListing = Info({
+        NFTListInfo memory newListing = NFTListInfo({
             tokenId: tokenId,
             price: price,
             uri: uri,
-            acquisitionTime: block.timestamp
+            gainTime: 0
         });
 
-        infos.push(newListing);
+        if (isStartUp) {
+            startUpNFTs.push(newListing);
+            delete userStartUpNFTs[msg.sender];
+        } else {
+            commonNFTs.push(newListing);
+            handleRemove(userCommonNFTs[msg.sender], tokenId);
+        }
 
         infoByTokenId[tokenId] = newListing;
 
-        nftLock[msg.sender] -= (price * 98) / 100;
+        uint curLock = nftLock[msg.sender];
+
+        if (price >= curLock) {
+            nftLock[msg.sender] = 0;
+            proposal.addInterest(msg.sender, price - curLock);
+        } else {
+            nftLock[msg.sender] -= price;
+        }
 
         emit Redeem(msg.sender, tokenId, price);
     }
@@ -221,11 +237,14 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         return this.onERC721Received.selector;
     }
 
-    function handleRemove(Info[] storage infos, uint tokenId) internal {
-        for (uint i = 0; i < infos.length; i++) {
-            if (infos[i].tokenId == tokenId) {
-                infos[i] = infos[infos.length - 1];
-                infos.pop();
+    function handleRemove(
+        NFTListInfo[] storage startUpNFTs,
+        uint tokenId
+    ) internal {
+        for (uint i = 0; i < startUpNFTs.length; i++) {
+            if (startUpNFTs[i].tokenId == tokenId) {
+                startUpNFTs[i] = startUpNFTs[startUpNFTs.length - 1];
+                startUpNFTs.pop();
                 break;
             }
         }

@@ -48,6 +48,8 @@ describe("Test", function () {
 
     const juryNFTSwap = await ethers.deployContract("JuryNFTSwap", [
       melonNft.target,
+      3n,
+      2n,
     ]);
 
     const proposal = await ethers.getContractFactory("Proposal");
@@ -93,6 +95,10 @@ describe("Test", function () {
     await proposalProxy.connect(userA).deposit(ethers.parseEther("50"));
     await proposalProxy.connect(userB).deposit(ethers.parseEther("50"));
 
+    console.log("getAllCommonNFTs: ", await juryNFTSwap.getAllCommonNFTs());
+    console.log("getAllStartUpNFTs: ", await juryNFTSwap.getAllStartUpNFTs());
+
+
     return {
       admin,
       userA,
@@ -125,9 +131,12 @@ describe("Test", function () {
       .connect(admin)
       .distributeStartUpNFT([userA.address, userB.address], [3n, 4n]);
     accountANFTLock = await juryNFTSwap.nftLock(userA.address);
+    accountAHolding = await juryNFTSwap.getUserNFTHolding(userA.address);
+
     balances = await proposalProxy.getAvailableBalance(userA.address);
     let owner = await melonNft.ownerOf(3n);
 
+    console.log("accountAHolding", accountAHolding);
     console.log("accountANFTLock", ethers.formatEther(accountANFTLock));
     console.log("balances", ethers.formatEther(balances));
     expect(owner).to.equal(userA.address);
@@ -142,21 +151,28 @@ describe("Test", function () {
       .purchaseCommonNFT(2n, proposalProxy.target);
 
     let balances = await proposalProxy.getAvailableBalance(userA.address);
+    let accountAHolding = await juryNFTSwap.getUserNFTHolding(userA.address);
 
-    console.log("after purchase balances", ethers.formatEther(balances));
+    console.log("after accountA balance", ethers.formatEther(balances));
 
-    console.log("after purchaseCommonNFT", await juryNFTSwap.getAllListing());
+    console.log("getAllCommonNFTs: ", await juryNFTSwap.getAllCommonNFTs());
+
+    console.log("accountAHolding", accountAHolding);
 
     console.log("---redeem---");
 
     await melonNft.connect(userA).setApprovalForAll(juryNFTSwap.target, true);
 
-    await juryNFTSwap.connect(userA).redeem(2n, ethers.parseEther("10"));
+    await juryNFTSwap.connect(userA).redeem(2n, ethers.parseEther("30"), proposalProxy.target);
 
     balances = await proposalProxy.getAvailableBalance(userA.address);
 
     console.log("after redeem balances", ethers.formatEther(balances));
 
-    console.log("after redeem", await juryNFTSwap.getAllListing());
+    console.log("after redeem", await juryNFTSwap.getAllCommonNFTs());
+
+    accountAHolding = await juryNFTSwap.getUserNFTHolding(userA.address);
+
+    console.log("accountAHolding", accountAHolding);
   });
 });

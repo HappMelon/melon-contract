@@ -1,9 +1,11 @@
 node_modules
 .env
+/.upgradable
 
 # Hardhat files
 /cache
 /cache-zk
+/artifacts
 
 # ignition
 /ignition/deployments
