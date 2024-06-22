@@ -21,6 +21,9 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
     uint public immutable COMMON_NFT_LIMIT_PER_USER;
     uint public immutable START_UP_NFT_LIMIT;
 
+  
+
+
     MelonNFT public melonNFT;
     NFTListInfo[] public startUpNFTs;
     NFTListInfo[] public commonNFTs;
@@ -78,6 +81,17 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         melonNFT = MelonNFT(_melonNFTAddr);
         COMMON_NFT_LIMIT_PER_USER = _commonNFTsLimitPerUser;
         START_UP_NFT_LIMIT = _startUpNFTsLimit;
+    }
+
+    function getTotalApplyInfo()
+        external
+        view
+        returns (uint totalApplicants, uint totalPledgedAmount)
+    {
+        totalApplicants = applyStartUpNFTInfos.length;
+        for (uint i = 0; i < totalApplicants; i++) {
+            totalPledgedAmount += applyStartUpNFTInfos[i].pledgeAmount;
+        }
     }
 
     function getApplyStartUpNFTInfos()
