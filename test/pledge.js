@@ -15,6 +15,8 @@ describe("Pledge", function () {
     const pledge = await ethers.deployContract("Pledge");
     const juryNFTSwap = await ethers.deployContract("JuryNFTSwap", [
       melonNFT.target,
+      3n,
+      5n,
     ]);
     const proposal = await ethers.getContractFactory("Proposal");
 
@@ -71,14 +73,15 @@ describe("Pledge", function () {
     const pledges = await pledge.connect(accountA).getPledges();
     console.log("pledges:", pledges);
 
-    const pledgeStats = await pledge.getPledgeStats();
+    let pledgeStats = await pledge.getPledgeStats();
     console.log("pledgeStats:", pledgeStats);
-
+    console.log("----------clearPledge----------");
     await delay(5000);
-    await pledge.clearPledge(accountA.address, proposalProxy.target);
+    await pledge.settlePledge(accountA.address, proposalProxy.target);
     const balances = await proposalProxy.getAvailableBalance(accountA.address);
-
     console.log("balances:", balances);
+    pledgeStats = await pledge.getPledgeStats();
+    console.log("pledgeStats:", pledgeStats);
   });
 });
 

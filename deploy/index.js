@@ -81,8 +81,8 @@ async function deployJury(proposalAddr) {
   return juryAddr;
 }
 
-async function deployPledge() {
-  const pledge = await hre.deployer.deploy("Pledge");
+async function deployPledge(deployer) {
+  const pledge = await deployer.deploy("Pledge");
   const pledgeAddr = await pledge.getAddress();
   console.log("pledgeAddr:", pledgeAddr);
   return pledgeAddr;
@@ -136,7 +136,7 @@ async function main() {
 
   // let mlnNFT = await deployMelonNFT();
   // const mlnNFTAddr = await mlnNFT.getAddress();
-  let juryNftSwap = await deployJuryNftSwap(process.env.MELON_NFT, 3, 5);
+  // let juryNftSwap = await deployJuryNftSwap(process.env.MELON_NFT, 3, 5);
   // await initJuryNftSwap(mlnNFT, juryNftSwap);
 
   // proposal
@@ -150,6 +150,9 @@ async function main() {
   // );
 
   // await upgradeProposal(process.env.PROPOSAL_PROXY);
+
+
+  await deployPledge(deployer)
 }
 
 main().catch((error) => {

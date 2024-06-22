@@ -24,12 +24,12 @@ contract Pledge {
         uint256 totalAmount
     );
 
-
     mapping(address => uint256) public pledgeLock; // The amount stack by the user
 
     mapping(address => PledgeInfo[]) public pledgeInfos;
 
-    uint256 public totalPledgedAmount;
+    mapping(address => uint256) public totalPledgedAmount; // Total pledged amount by each user
+    mapping(address => uint256) public totalInterestEarned; // Total interest earned by each user
 
     uint256 public totalPledgers;
 
@@ -48,16 +48,16 @@ contract Pledge {
 
         pledgeInfos[msg.sender].push(pledgeInfo);
         pledgeLock[msg.sender] += amount;
-        totalPledgedAmount += amount;
+        totalPledgedAmount[msg.sender] += amount;
 
         emit NewPledge(msg.sender, deadline, margins, amount);
     }
 
     function getPledgeStats() external view returns (uint256, uint256) {
-        return (totalPledgers, totalPledgedAmount);
+        return (totalInterestEarned[msg.sender], totalPledgedAmount[msg.sender]);
     }
 
-    function clearPledge(address user, Proposal proposal) external {
+    function settlePledge(address user, Proposal proposal) external {
         uint256 totalAmount = 0;
         uint256 principalAmount = 0;
         uint256 interestAmount = 0;
@@ -66,15 +66,18 @@ contract Pledge {
             PledgeInfo memory info = pledgeInfos[user][i];
 
             if (info.deadline < block.timestamp) {
-                uint256 amountWithInterest = (info.amount *
-                    (100 + info.margins)) / 100;
+                uint256 amountWithInterest = (info.amount * (100 + info.margins)) / 100;
                 principalAmount += info.amount;
                 interestAmount += amountWithInterest - info.amount;
                 totalAmount += amountWithInterest;
-                removePledge(i);
+                removePledge(user, i);
                 pledgeLock[user] -= info.amount;
             }
         }
+
+        // Update total interest earned by the user
+        totalInterestEarned[user] += interestAmount;
+
         proposal.addInterest(user, interestAmount);
         emit PledgeCleared(user, principalAmount, interestAmount, totalAmount);
     }
@@ -83,15 +86,15 @@ contract Pledge {
         return pledgeInfos[msg.sender];
     }
 
-    function removePledge(uint256 index) internal {
-        require(index < pledgeInfos[msg.sender].length, "Index out of bounds");
+    function removePledge(address user, uint256 index) internal {
+        require(index < pledgeInfos[user].length, "Index out of bounds");
 
-        uint256 lastIndex = pledgeInfos[msg.sender].length - 1;
+        uint256 lastIndex = pledgeInfos[user].length - 1;
 
         if (index != lastIndex) {
-            pledgeInfos[msg.sender][index] = pledgeInfos[msg.sender][lastIndex];
+            pledgeInfos[user][index] = pledgeInfos[user][lastIndex];
         }
 
-        pledgeInfos[msg.sender].pop();
+        pledgeInfos[user].pop();
     }
 }
