@@ -182,7 +182,7 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
 
         userCommonNFTs[msg.sender].push(info);
 
-        handleRemove(startUpNFTs, tokenId);
+        handleRemove(commonNFTs, tokenId);
         delete infoByTokenId[tokenId];
 
         emit BuyNFT(msg.sender, tokenId, info.price);
