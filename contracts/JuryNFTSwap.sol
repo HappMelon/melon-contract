@@ -16,22 +16,20 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
     struct ApplyStartUpNFTInfo {
         uint pledgeAmount;
         address user;
+        uint applyTime;
     }
 
     uint public immutable COMMON_NFT_LIMIT_PER_USER;
     uint public immutable START_UP_NFT_LIMIT;
 
-  
-
-
     MelonNFT public melonNFT;
     NFTListInfo[] public startUpNFTs;
     NFTListInfo[] public commonNFTs;
+    ApplyStartUpNFTInfo[] public applyStartUpNFTInfos;
 
     mapping(address => NFTListInfo) public userStartUpNFTs;
     mapping(address => NFTListInfo[]) public userCommonNFTs;
-
-    ApplyStartUpNFTInfo[] public applyStartUpNFTInfos;
+    mapping(address => ApplyStartUpNFTInfo) public userApplyStartUpNFT;
 
     mapping(address => uint) public nftLock;
     mapping(uint => NFTListInfo) public infoByTokenId;
@@ -110,10 +108,10 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         return commonNFTs;
     }
 
-    function getUserNFTHolding(
+    function getCommonNFTHolding(
         address user
-    ) external view returns (NFTListInfo memory, NFTListInfo[] memory) {
-        return (userStartUpNFTs[user], userCommonNFTs[user]);
+    ) external view returns (NFTListInfo[] memory) {
+        return userCommonNFTs[user];
     }
 
     function distributeStartUpNFT(
@@ -135,18 +133,43 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
             melonNFT.safeTransferFrom(address(this), user, tokenId);
             info.gainTime = block.timestamp;
             userStartUpNFTs[user] = info;
+
             delete infoByTokenId[tokenId];
-            handleRemove(startUpNFTs, tokenId);
+            handleNFTListRemove(startUpNFTs, tokenId);
             emit StartUpNFTSending(user, tokenId, info.price);
         }
     }
 
     function applyStartUpNFT(uint pledgeAmount) external {
-        applyStartUpNFTInfos.push(
-            ApplyStartUpNFTInfo({pledgeAmount: pledgeAmount, user: msg.sender})
-        );
-        nftLock[msg.sender] = pledgeAmount;
+        ApplyStartUpNFTInfo memory info = ApplyStartUpNFTInfo({
+            pledgeAmount: pledgeAmount,
+            user: msg.sender,
+            applyTime: block.timestamp
+        });
+        applyStartUpNFTInfos.push(info);
+        userApplyStartUpNFT[msg.sender] = info;
+        nftLock[msg.sender] += pledgeAmount;
         emit ApplyStartUpNFT(msg.sender, pledgeAmount);
+    }
+
+    function getUserApplyStartUpNFTInfos(
+        address user
+    )
+        external
+        view
+        returns (
+            uint tokenId,
+            string memory uri,
+            uint pledgeAmount,
+            uint applyTime
+        )
+    {
+        NFTListInfo memory info = userStartUpNFTs[user];
+        ApplyStartUpNFTInfo memory applyInfo = userApplyStartUpNFT[user];
+        tokenId = info.tokenId;
+        uri = info.uri;
+        pledgeAmount = applyInfo.pledgeAmount;
+        applyTime = applyInfo.applyTime;
     }
 
     function initialNFTHangOut(
@@ -196,7 +219,7 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
 
         userCommonNFTs[msg.sender].push(info);
 
-        handleRemove(commonNFTs, tokenId);
+        handleNFTListRemove(commonNFTs, tokenId);
         delete infoByTokenId[tokenId];
 
         emit BuyNFT(msg.sender, tokenId, info.price);
@@ -225,7 +248,7 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
             delete userStartUpNFTs[msg.sender];
         } else {
             commonNFTs.push(newListing);
-            handleRemove(userCommonNFTs[msg.sender], tokenId);
+            handleNFTListRemove(userCommonNFTs[msg.sender], tokenId);
         }
 
         infoByTokenId[tokenId] = newListing;
@@ -251,14 +274,14 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
         return this.onERC721Received.selector;
     }
 
-    function handleRemove(
-        NFTListInfo[] storage startUpNFTs,
+    function handleNFTListRemove(
+        NFTListInfo[] storage listInfos,
         uint tokenId
     ) internal {
-        for (uint i = 0; i < startUpNFTs.length; i++) {
-            if (startUpNFTs[i].tokenId == tokenId) {
-                startUpNFTs[i] = startUpNFTs[startUpNFTs.length - 1];
-                startUpNFTs.pop();
+        for (uint i = 0; i < listInfos.length; i++) {
+            if (listInfos[i].tokenId == tokenId) {
+                listInfos[i] = listInfos[listInfos.length - 1];
+                listInfos.pop();
                 break;
             }
         }
@@ -270,5 +293,7 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
             ApplyStartUpNFTInfo storage applyInfo = applyStartUpNFTInfos[i];
             nftLock[applyInfo.user] -= applyInfo.pledgeAmount;
         }
+        // Clear the entire array after unlocking the NFTs
+        delete applyStartUpNFTInfos;
     }
 }

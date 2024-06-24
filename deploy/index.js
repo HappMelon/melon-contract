@@ -136,7 +136,7 @@ async function main() {
 
   // let mlnNFT = await deployMelonNFT();
   // const mlnNFTAddr = await mlnNFT.getAddress();
-  // let juryNftSwap = await deployJuryNftSwap(process.env.MELON_NFT, 3, 5);
+  let juryNftSwap = await deployJuryNftSwap(process.env.MELON_NFT, 3, 5);
   // await initJuryNftSwap(mlnNFT, juryNftSwap);
 
   // proposal
@@ -152,7 +152,7 @@ async function main() {
   // await upgradeProposal(process.env.PROPOSAL_PROXY);
 
 
-  await deployPledge(deployer)
+  // await deployPledge(deployer)
 }
 
 main().catch((error) => {

@@ -118,9 +118,10 @@ describe("Test", function () {
 
     let accountANFTLock = await juryNFTSwap.nftLock(userA.address);
     let applyStartUpNFTInfos = await juryNFTSwap.getApplyStartUpNFTInfos();
-
     let balances = await proposalProxy.getAvailableBalance(userA.address);
+    let userApplyInfo = await juryNFTSwap.getUserApplyStartUpNFTInfos(userA.address);
 
+    console.log("userA userApplyInfo", userApplyInfo);
     console.log("ApplyStartUpNFTInfos:", applyStartUpNFTInfos);
     console.log("accountANFTLock", ethers.formatEther(accountANFTLock));
     console.log("balances", ethers.formatEther(balances));
@@ -131,11 +132,17 @@ describe("Test", function () {
       .connect(admin)
       .distributeStartUpNFT([userA.address, userB.address], [3n, 4n]);
     accountANFTLock = await juryNFTSwap.nftLock(userA.address);
-    accountAHolding = await juryNFTSwap.getUserNFTHolding(userA.address);
-
+    accountAHolding = await juryNFTSwap.getCommonNFTHolding(userA.address);
     balances = await proposalProxy.getAvailableBalance(userA.address);
     let owner = await melonNft.ownerOf(3n);
+    userApplyInfo = await juryNFTSwap.getUserApplyStartUpNFTInfos(userA.address);
+    applyStartUpNFTInfos = await juryNFTSwap.getApplyStartUpNFTInfos();
+    let totalApplyInfo = await juryNFTSwap.getTotalApplyInfo();
 
+
+    console.log("userA userApplyInfo", userApplyInfo);
+    console.log("ApplyStartUpNFTInfos:", applyStartUpNFTInfos);
+    console.log("totalApplyInfo", totalApplyInfo);
     console.log("accountAHolding", accountAHolding);
     console.log("accountANFTLock", ethers.formatEther(accountANFTLock));
     console.log("balances", ethers.formatEther(balances));
@@ -151,7 +158,7 @@ describe("Test", function () {
       .purchaseCommonNFT(2n, proposalProxy.target);
 
     let balances = await proposalProxy.getAvailableBalance(userA.address);
-    let accountAHolding = await juryNFTSwap.getUserNFTHolding(userA.address);
+    let accountAHolding = await juryNFTSwap.getCommonNFTHolding(userA.address);
 
     console.log("after accountA balance", ethers.formatEther(balances));
 
@@ -171,7 +178,7 @@ describe("Test", function () {
 
     console.log("after redeem", await juryNFTSwap.getAllCommonNFTs());
 
-    accountAHolding = await juryNFTSwap.getUserNFTHolding(userA.address);
+    accountAHolding = await juryNFTSwap.getCommonNFTHolding(userA.address);
 
     console.log("accountAHolding", accountAHolding);
   });
