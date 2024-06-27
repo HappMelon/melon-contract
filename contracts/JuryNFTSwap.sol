@@ -49,6 +49,7 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
     );
     error NotNFTOwner(address user, uint tokenId);
     error MaximumNumberOfHoldings(address user, uint holdAmount);
+    error NFTTransferFailed(uint tokenId);
 
     modifier isListed(uint tokenId) {
         if (bytes(infoByTokenId[tokenId].uri).length == 0) {
@@ -211,18 +212,20 @@ contract JuryNFTSwap is IERC721Receiver, Ownable {
             "Insufficient balance"
         );
 
-        nftLock[msg.sender] += info.price;
+        try melonNFT.safeTransferFrom(address(this), msg.sender, tokenId) {
+            nftLock[msg.sender] += info.price;
 
-        melonNFT.safeTransferFrom(address(this), msg.sender, tokenId);
+            info.gainTime = block.timestamp;
 
-        info.gainTime = block.timestamp;
+            userCommonNFTs[msg.sender].push(info);
 
-        userCommonNFTs[msg.sender].push(info);
+            handleNFTListRemove(commonNFTs, tokenId);
+            delete infoByTokenId[tokenId];
 
-        handleNFTListRemove(commonNFTs, tokenId);
-        delete infoByTokenId[tokenId];
-
-        emit BuyNFT(msg.sender, tokenId, info.price);
+            emit BuyNFT(msg.sender, tokenId, info.price);
+        } catch {
+            revert NFTTransferFailed(tokenId);
+        }
     }
 
     function redeem(
