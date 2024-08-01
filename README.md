@@ -1,9 +1,3 @@
-# test account
-0xc0ee714715108b1a6795391f7e05a044d795ba70   
-secret key: 641943fa6c3fab18fed274c2b3194f0d71383ecfb9a58b2d70188e693c245510  
-0xb9d47c289b8dacff0b894e385464f51e5eabdd86  
-secret key: a39de0eaa34cd3be35a7a200989437b9f672a4056298a51f086db9b634683fec
-
 # faucets guide
 1. 获取0.05 sepolia ETH  
 https://www.infura.io/faucet/sepolia?_ga=2.191463465.2049402864.1717224083-318271395.1717224083
@@ -19,7 +13,7 @@ https://app.txsync.io/bridge
 - melonNft  
 0xAF55f906005403D889cd5C16ef0341b5E34731C1
 - jury
-0x9Fe47058CC28eD2D4927Bd501076277665f64A7C
+0x15408Ddd46C0bA4b852958D83cF1672C19d9fA7f
 - juryNftSwap  
 0xDeBaA3977dAB0Fb46F22AECcbBa97ee17dbf60bb
 - pledge  

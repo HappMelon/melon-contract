@@ -6,25 +6,6 @@ const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 const { ethers, upgrades } = require("hardhat");
 
-function getFutureTime() {
-  // 获取当前时间
-  const now = new Date();
-
-  // 计算未来一天的时间
-  const future = new Date(now.getTime());
-
-  // 获取时间戳，以毫秒为单位
-  const futureTimestampMillis = future.getTime();
-
-  // 将时间戳转换为秒为单位，并转换为 bigint 类型
-  const futureTimestampSecondsBigInt = BigInt(
-    Math.floor(futureTimestampMillis / 1000) + 10
-  );
-
-  console.log(futureTimestampSecondsBigInt);
-  return futureTimestampSecondsBigInt;
-}
-
 describe("Test", function () {
   let accountA, accountB, accountC, accountD, proposalCreatorAccount;
   let juryMembersA, juryMembersB, juryMembersC, juryMembersD;
@@ -44,12 +25,21 @@ describe("Test", function () {
     ] = await ethers.getSigners();
 
     melonToken = await ethers.deployContract("MelonToken");
+    const melonNft = await ethers.deployContract("MelonNFT");
+
+    const juryNFTSwap = await ethers.deployContract("JuryNFTSwap", [
+      melonNft.target,
+      3n,
+      2n,
+    ]);
+
+    const pledge = await ethers.deployContract("Pledge");
 
     let proposalFactory = await ethers.getContractFactory("Proposal");
 
     proposalProxy = await upgrades.deployProxy(
       proposalFactory,
-      [melonToken.target],
+      [melonToken.target, juryNFTSwap.target, pledge.target],
       {
         kind: "uups",
         initializer: "initialize",
@@ -67,11 +57,23 @@ describe("Test", function () {
       }
     );
 
-    proposalProxy.on("Settle", (proposalId, winningOptionId, jurors) => {
-      console.log("Settle event received:");
-      console.log("Proposal ID:", proposalId);
-      console.log("Winning Option ID:", winningOptionId);
-      console.log("Jurors:", jurors);
+    // proposalProxy.on("Settle", (proposalId, winningOptionId, jurors) => {
+    //   console.log("Settle event received:");
+    //   console.log("Proposal ID:", proposalId);
+    //   console.log("Winning Option ID:", winningOptionId);
+    //   console.log("Jurors:", jurors);
+    // });
+
+    proposalProxy.on("LogReward", (user, reward) => {
+      console.log("LogReward event received:");
+      console.log("User:", user);
+      console.log("Reward:", reward);
+    });
+
+    proposalProxy.on("LogPenalty", (user, penalty) => {
+      console.log("LogPenalty event received:");
+      console.log("User:", user);
+      console.log("Penalty:", penalty);
     });
 
     // Cast 100 tokens per account
@@ -116,16 +118,13 @@ describe("Test", function () {
     // user vote option1 win
     await proposalProxy.connect(accountA).vote(0n, 0n, ethers.parseEther("7"));
     await proposalProxy.connect(accountB).vote(0n, 0n, ethers.parseEther("3"));
-    await proposalProxy.connect(accountC).vote(0n, 1n, ethers.parseEther("3"));
-    await proposalProxy.connect(accountD).vote(0n, 1n, ethers.parseEther("2"));
-
-    let proposalDetail = await proposalProxy.getDetails(0n);
-    console.log("proposalDetail", proposalDetail);
+    await proposalProxy.connect(accountC).vote(0n, 0n, ethers.parseEther("3"));
+    await proposalProxy.connect(accountD).vote(0n, 0n, ethers.parseEther("2"));
 
     let option1voting = await proposalProxy.getVoting(0n, 0n);
     console.log("option1voting:", option1voting);
 
-    await juryProxy.create(0n, 0n, 1717412117n);
+    await juryProxy.create(0n, 1717412117n);
     //  vote juryProxy
     await juryProxy.connect(juryMembersA).vote(0n, 0n);
     await juryProxy.connect(juryMembersB).vote(0n, 0n);
@@ -137,6 +136,9 @@ describe("Test", function () {
     console.log("juryProxy detail", detail);
 
     await juryProxy.handleResult(0n);
+
+    let proposalDetail = await proposalProxy.getDetails(0n);
+    console.log("proposalDetail", proposalDetail);
 
     let jurorABalance = await proposalProxy.balances(juryMembersA.address);
     let jurorBBalance = await proposalProxy.balances(juryMembersB.address);
@@ -157,5 +159,13 @@ describe("Test", function () {
     console.log("accountBBalance", ethers.formatEther(accountBBalance));
     console.log("accountCBalance", ethers.formatEther(accountCBalance));
     console.log("accountDBalance", ethers.formatEther(accountDBalance));
+
+    await doSomething(); // 调用 doSomething 函数
   });
 });
+
+async function doSomething() {
+  console.log("Before waiting");
+  await new Promise((resolve) => setTimeout(resolve, 2000)); // 等待 2 秒
+  console.log("After waiting");
+}

@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 contract Jury is Initializable, UUPSUpgradeable {
     struct JuryInfo {
-        uint256 winOptionId;
         Selection[] selections;
         uint256 deadline;
     }
@@ -24,14 +23,12 @@ contract Jury is Initializable, UUPSUpgradeable {
 
     error JuryHasBeenCreated(uint256 proposalId);
     error NotYetDue(uint256 proposalId, uint256 deadline);
+    error InvalidProposalId(uint256 proposalId);
+    error NoVotes(uint256 proposalId);
 
     event Fail(uint256 proposalId);
     event Success(uint256 proposalId);
-    event CreateProposalJury(
-        uint256 proposalId,
-        uint256 winOption,
-        uint256 deadline
-    );
+    event CreateProposalJury(uint256 proposalId, uint256 deadline);
 
     function initialize(address _proposalAddr) external initializer {
         proposalAddr = _proposalAddr;
@@ -41,9 +38,7 @@ contract Jury is Initializable, UUPSUpgradeable {
         proposalAddr = _proposalAddr;
     }
 
-    function getDetail(
-        uint256 proposalId
-    ) public view returns (address[] memory jurors, uint256[] memory optionId) {
+    function getDetail(uint256 proposalId) public view returns (address[] memory jurors, uint256[] memory optionId) {
         JuryInfo memory juryInfo = juryInfos[proposalId];
         Selection[] memory selections = juryInfo.selections;
 
@@ -57,26 +52,19 @@ contract Jury is Initializable, UUPSUpgradeable {
         }
     }
 
-    function deleteById(uint256 proposald) public {
-        delete juryInfos[proposald];
+    function deleteById(uint256 proposalId) public {
+        delete juryInfos[proposalId];
     }
 
-    function create(
-        uint256 proposalId,
-        uint256 winOptionId,
-        uint256 deadline
-    ) external {
+    function create(uint256 proposalId, uint256 deadline) external {
         if (juryInfos[proposalId].deadline != 0) {
             revert JuryHasBeenCreated(proposalId);
         }
 
         JuryInfo storage newProposalJury = juryInfos[proposalId];
-
-        newProposalJury.winOptionId = winOptionId;
-
         newProposalJury.deadline = deadline;
 
-        emit CreateProposalJury(proposalId, winOptionId, deadline);
+        emit CreateProposalJury(proposalId, deadline);
     }
 
     function vote(uint256 proposalId, uint256 optionId) external {
@@ -86,11 +74,14 @@ contract Jury is Initializable, UUPSUpgradeable {
         });
 
         JuryInfo storage proposalJury = juryInfos[proposalId];
-
         proposalJury.selections.push(newSelection);
     }
 
     function handleResult(uint256 proposalId) external {
+        if (juryInfos[proposalId].deadline == 0) {
+            revert InvalidProposalId(proposalId);
+        }
+        
         JuryInfo storage juryInfo = juryInfos[proposalId];
         Selection[] memory selections = juryInfo.selections;
         (address[] memory jurors, ) = getDetail(proposalId);
@@ -99,22 +90,23 @@ contract Jury is Initializable, UUPSUpgradeable {
             revert NotYetDue(proposalId, juryInfo.deadline);
         }
 
-        for (uint256 i = 0; i < selections.length; i++) {
-            Selection memory selection = selections[i];
-            if (selection.optionId != juryInfo.winOptionId) {
-                delete (proposalId);
+        if (selections.length == 0) {
+            revert NoVotes(proposalId);
+        }
+
+        uint256 majorityOption = selections[0].optionId;
+        for (uint256 i = 1; i < selections.length; i++) {
+            if (selections[i].optionId != majorityOption) {
                 emit Fail(proposalId);
                 return;
             }
         }
 
-        Proposal(proposalAddr).settle(proposalId, juryInfo.winOptionId, jurors);
+        Proposal(proposalAddr).settle(proposalId, majorityOption, jurors);
         emit Success(proposalId);
     }
 
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override {
+    function _authorizeUpgrade(address newImplementation) internal override {
         impleAddr = newImplementation;
     }
 }

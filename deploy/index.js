@@ -42,10 +42,11 @@ async function deployMelonToken() {
   return melonTokenAddr;
 }
 
-async function upgradeProposal(proposalProxyAddr) {
-  const proposalArt = await hre.deployer.deploy("Proposal");
+async function upgradeProposal(proposalProxyAddr, zkWallet) {
+  const deployer = new Deployer(hre, zkWallet);
+  const proposalArt = await deployer.loadArtifact("Proposal");
   const proposal = await hre.zkUpgrades.upgradeProxy(
-    hre.deployer.zkWallet,
+    deployer.zkWallet,
     proposalProxyAddr,
     proposalArt
   );
@@ -53,6 +54,20 @@ async function upgradeProposal(proposalProxyAddr) {
   const newProposalAddr = await proposal.getAddress();
   console.log("proposalAddr:", newProposalAddr);
   return newProposalAddr;
+}
+
+async function upgradeJury(juryProxyAddr, zkWallet) {
+  const deployer = new Deployer(hre, zkWallet);
+  const juryArt = await deployer.loadArtifact("Jury");
+  const jury = await hre.zkUpgrades.upgradeProxy(
+    deployer.zkWallet,
+    juryProxyAddr,
+    juryArt
+  );
+  await jury.waitForDeployment();
+  const newJuryAddr = await jury.getAddress();
+  console.log("juryAddr:", newJuryAddr);
+  return newJuryAddr;
 }
 
 async function deployProposal(deployer, melonTokenAddr, juryNFTSwapAddr, pledgeAddr) {
@@ -69,10 +84,12 @@ async function deployProposal(deployer, melonTokenAddr, juryNFTSwapAddr, pledgeA
   return proposalAddr;
 }
 
-async function deployJury(proposalAddr) {
+async function deployJury(proposalAddr, zkWallet) {
+  const deployer = new Deployer(hre, zkWallet);
+  const juryArt = await deployer.loadArtifact("Jury");
   const jury = await hre.zkUpgrades.deployProxy(
-    hre.deployer.zkWallet,
-    "Jury",
+    deployer.zkWallet,
+    juryArt,
     [proposalAddr],
     { initializer: "initialize" }
   );
@@ -131,28 +148,10 @@ async function initJuryNftSwap(mlnNFT, juryNFTSwap) {
 async function main() {
   const privateKey = process.env.WALLET_PRIVATE_KEY;
   console.log("privateKey:", privateKey);
-  const wallet = new Wallet(privateKey);
-  const deployer = new Deployer(hre, wallet);
-
-  // let mlnNFT = await deployMelonNFT();
-  // const mlnNFTAddr = await mlnNFT.getAddress();
-  let juryNftSwap = await deployJuryNftSwap(process.env.MELON_NFT, 3, 5);
-  // await initJuryNftSwap(mlnNFT, juryNftSwap);
-
-  // proposal
-  // await deployProposal(deployer, process.env.MELON_TOKEN, process.env.JURY_NFT_SWAP, process.env.PLEDGE);
-
-  // let melonNFTAddr = await deployMelonNFT();
-  // await deployJuryNftSwap(
-  //   process.env.MELON_TOKEN,
-  //   process.env.MELON_NFT,
-  //   process.env.PROPOSAL_PROXY
-  // );
-
-  // await upgradeProposal(process.env.PROPOSAL_PROXY);
-
-
-  // await deployPledge(deployer)
+  const zkWallet = Wallet.fromMnemonic("shrug order jacket dust swamp unit oil program response cram layer craft");
+  await upgradeJury(process.env.JURY, zkWallet);
+  // await deployJury("0x519A4a28e79294d502EC3a1B590F0C64d33b2f50",zkWallet)
+  // await upgradeProposal(process.env.PROPOSAL_PROXY, zkWallet);
 }
 
 main().catch((error) => {

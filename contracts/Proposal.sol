@@ -41,7 +41,7 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     event ExchangePoints(address indexed user, uint256 points);
 
-    event Refunded(uint256 indexed proposalId, uint256 winOptionId);
+    event Refunded(uint256 indexed proposalId, uint256 amount);
 
     event JurorsDistributeRewards(
         uint256 indexed proposalId,
@@ -108,7 +108,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
 
     function setNewPledge(address _pledgeAddr) external onlyOwner {
         pledge = Pledge(_pledgeAddr);
-    
     }
 
     function addInterest(address user, uint interestAmount) external {
@@ -226,13 +225,10 @@ contract Proposal is Initializable, UUPSUpgradeable {
     ) external {
         emit Settle(proposalId, winOptionId, jurors);
 
-        bool isSingleOptionStatus = isSingleOptionProposal(
-            proposalId,
-            winOptionId
-        );
+        bool isSingleOptionStatus = isSingleOptionProposal(proposalId);
 
         if (isSingleOptionStatus) {
-            handleSingleOptionProposal(proposalId, winOptionId);
+            handleSingleOptionProposal(proposalId);
         } else {
             handleJurorsDistributeRewards(proposalId, jurors);
             handleMultiOptionProposal(proposalId, winOptionId);
@@ -256,14 +252,17 @@ contract Proposal is Initializable, UUPSUpgradeable {
     }
 
     function isSingleOptionProposal(
-        uint256 proposalId,
-        uint256 winOptionId
+        uint256 proposalId
     ) internal view returns (bool) {
         ProposalInfo memory proposalInfo = proposalInfos[proposalId];
         Option[] memory options = proposalInfo.options;
         for (uint256 i = 0; i < options.length; i++) {
-            if (i != winOptionId && options[i].count > 0) {
-                return false;
+            if (options[i].count > 0) {
+                for (uint256 j = 0; j < options.length; j++) {
+                    if (i != j && options[j].count > 0) {
+                        return false;
+                    }
+                }
             }
         }
         return true;
@@ -291,19 +290,20 @@ contract Proposal is Initializable, UUPSUpgradeable {
         );
     }
 
-    function handleSingleOptionProposal(
-        uint256 proposalId,
-        uint256 winOptionId
-    ) internal {
-        mapping(uint256 => VoteInfo[]) storage voteRecords = voting[
-            winOptionId
-        ];
+    function handleSingleOptionProposal(uint256 proposalId) internal {
+        ProposalInfo storage proposalInfo = proposalInfos[proposalId];
+        uint256 optionCount = proposalInfo.options.length;
+        uint256 totalRefund = 0;
 
-        for (uint256 i = 0; i < voteRecords[winOptionId].length; i++) {
-            VoteInfo memory voteInfo = voteRecords[winOptionId][i];
-            votingLock[voteInfo.user] -= voteInfo.amount;
+        for (uint256 i = 0; i < optionCount; i++) {
+            VoteInfo[] memory voteInfos = voting[proposalId][i];
+            for (uint256 j = 0; j < voteInfos.length; j++) {
+                VoteInfo memory voteInfo = voteInfos[j];
+                votingLock[voteInfo.user] -= voteInfo.amount;
+                totalRefund += voteInfo.amount;
+            }
         }
-        emit Refunded(proposalId, winOptionId);
+        emit Refunded(proposalId, totalRefund); // Emit total refunded amount
     }
 
     function handleMultiOptionProposal(
@@ -313,10 +313,6 @@ contract Proposal is Initializable, UUPSUpgradeable {
         ProposalInfo storage proposalInfo = proposalInfos[proposalId];
         uint256 optionCount = proposalInfo.options.length;
 
-        mapping(uint256 => VoteInfo[]) storage voteRecords = voting[
-            winOptionId
-        ];
-
         (, , uint256[] memory counts, , uint256 allVotesCast, ) = getDetails(
             proposalId
         );
@@ -324,42 +320,25 @@ contract Proposal is Initializable, UUPSUpgradeable {
         uint256 totalStakeExtractFee = (allVotesCast * 88) / 100;
 
         for (uint256 i = 0; i < optionCount; i++) {
-            distributeRewardsAndPenalties(
-                proposalId,
-                winOptionId,
-                totalStakeExtractFee,
-                counts[winOptionId],
-                voteRecords[i],
-                i
-            );
-        }
-    }
+            VoteInfo[] memory voteInfos = voting[proposalId][i]; // Corrected: Use i instead of winOptionId
+            for (uint256 j = 0; j < voteInfos.length; j++) {
+                VoteInfo memory voteInfo = voteInfos[j];
+                votingLock[voteInfo.user] -= voteInfo.amount;
 
-    function distributeRewardsAndPenalties(
-        uint256 proposalId,
-        uint256 winOptionId,
-        uint256 totalStakeExtractFee,
-        uint256 winVoteCount,
-        VoteInfo[] memory voteInfos,
-        uint256 optionId
-    ) internal {
-        for (uint256 j = 0; j < voteInfos.length; j++) {
-            VoteInfo memory voteInfo = voteInfos[j];
-            votingLock[voteInfo.user] -= voteInfo.amount;
-
-            if (optionId == winOptionId) {
-                uint256 reward = (voteInfo.amount * totalStakeExtractFee) /
-                    winVoteCount;
-                uint256 rewardExcludingPrincipal = reward - voteInfo.amount;
-                balances[voteInfo.user] += rewardExcludingPrincipal;
-                userProposalResults[proposalId][voteInfo.user] = int256(
-                    rewardExcludingPrincipal
-                );
-            } else {
-                balances[voteInfo.user] -= voteInfo.amount;
-                userProposalResults[proposalId][voteInfo.user] =
-                    int256(voteInfo.amount) *
-                    -1;
+                if (i == winOptionId) {
+                    uint reward = (voteInfo.amount * totalStakeExtractFee) /
+                        counts[winOptionId];
+                    uint256 rewardExcludingPrincipal = reward - voteInfo.amount;
+                    balances[voteInfo.user] += rewardExcludingPrincipal;
+                    userProposalResults[proposalId][voteInfo.user] = int256(
+                        rewardExcludingPrincipal
+                    );
+                } else {
+                    balances[voteInfo.user] -= voteInfo.amount;
+                    userProposalResults[proposalId][voteInfo.user] =
+                        int256(voteInfo.amount) *
+                        -1;
+                }
             }
         }
     }
