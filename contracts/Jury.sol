@@ -97,6 +97,7 @@ contract Jury is Initializable, UUPSUpgradeable {
         uint256 majorityOption = selections[0].optionId;
         for (uint256 i = 1; i < selections.length; i++) {
             if (selections[i].optionId != majorityOption) {
+                Proposal(proposalAddr).refundForFailedProposal(proposalId);
                 emit Fail(proposalId);
                 return;
             }

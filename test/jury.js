@@ -118,8 +118,8 @@ describe("Test", function () {
     // user vote option1 win
     await proposalProxy.connect(accountA).vote(0n, 0n, ethers.parseEther("7"));
     await proposalProxy.connect(accountB).vote(0n, 0n, ethers.parseEther("3"));
-    await proposalProxy.connect(accountC).vote(0n, 0n, ethers.parseEther("3"));
-    await proposalProxy.connect(accountD).vote(0n, 0n, ethers.parseEther("2"));
+    await proposalProxy.connect(accountC).vote(0n, 1n, ethers.parseEther("3"));
+    await proposalProxy.connect(accountD).vote(0n, 1n, ethers.parseEther("2"));
 
     let option1voting = await proposalProxy.getVoting(0n, 0n);
     console.log("option1voting:", option1voting);
@@ -159,6 +159,16 @@ describe("Test", function () {
     console.log("accountBBalance", ethers.formatEther(accountBBalance));
     console.log("accountCBalance", ethers.formatEther(accountCBalance));
     console.log("accountDBalance", ethers.formatEther(accountDBalance));
+
+    let accountAAvailable = await proposalProxy.getAvailableBalance(accountA.address);
+    let accountBAvailable = await proposalProxy.getAvailableBalance(accountB.address);
+    let accountCAvailable = await proposalProxy.getAvailableBalance(accountC.address);
+    let accountDAvailable = await proposalProxy.getAvailableBalance(accountD.address);
+
+    console.log("accountABalance", ethers.formatEther(accountAAvailable));
+    console.log("accountBBalance", ethers.formatEther(accountBAvailable));
+    console.log("accountCBalance", ethers.formatEther(accountCAvailable));
+    console.log("accountDBalance", ethers.formatEther(accountDAvailable));
 
     await doSomething(); // 调用 doSomething 函数
   });

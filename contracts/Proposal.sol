@@ -85,6 +85,11 @@ contract Proposal is Initializable, UUPSUpgradeable {
         _;
     }
 
+    modifier proposalExists(uint256 proposalId) {
+        require(proposalId < proposalInfos.length, "Proposal does not exist");
+        _;
+    }
+
     // function
     function initialize(
         address _tokenAddr,
@@ -218,6 +223,25 @@ contract Proposal is Initializable, UUPSUpgradeable {
         emit Voted(msg.sender, proposalId, optionId, amount);
     }
 
+    function getUserVoteAmount(
+        uint256 proposalId,
+        address user
+    ) external view returns (uint256) {
+        uint256 totalVoteAmount = 0;
+
+        ProposalInfo storage proposal = proposalInfos[proposalId];
+        for (uint256 i = 0; i < proposal.options.length; i++) {
+            VoteInfo[] memory votes = voting[proposalId][i];
+            for (uint256 j = 0; j < votes.length; j++) {
+                if (votes[j].user == user) {
+                    totalVoteAmount += votes[j].amount;
+                    break;
+                }
+            }
+        }
+        return totalVoteAmount;
+    }
+
     function settle(
         uint256 proposalId,
         uint256 winOptionId,
@@ -234,6 +258,25 @@ contract Proposal is Initializable, UUPSUpgradeable {
             handleMultiOptionProposal(proposalId, winOptionId);
         }
         winningOption[proposalId] = winOptionId;
+    }
+
+    function refundForFailedProposal(
+        uint256 proposalId
+    ) external proposalExists(proposalId) {
+        ProposalInfo storage proposalInfo = proposalInfos[proposalId];
+        uint256 optionCount = proposalInfo.options.length;
+        uint256 totalRefund = 0;
+
+        for (uint256 i = 0; i < optionCount; i++) {
+            VoteInfo[] memory voteInfos = voting[proposalId][i];
+            for (uint256 j = 0; j < voteInfos.length; j++) {
+                VoteInfo memory voteInfo = voteInfos[j];
+                votingLock[voteInfo.user] -= voteInfo.amount;
+                totalRefund += voteInfo.amount;
+            }
+        }
+
+        emit Refunded(proposalId, totalRefund);
     }
 
     function getAvailableBalance(address user) public view returns (uint256) {

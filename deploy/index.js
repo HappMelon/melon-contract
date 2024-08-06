@@ -146,12 +146,12 @@ async function initJuryNftSwap(mlnNFT, juryNFTSwap) {
 }
 
 async function main() {
-  const privateKey = process.env.WALLET_PRIVATE_KEY;
-  console.log("privateKey:", privateKey);
-  const zkWallet = Wallet.fromMnemonic("shrug order jacket dust swamp unit oil program response cram layer craft");
-  await upgradeJury(process.env.JURY, zkWallet);
+  const mnemonic = process.env.TEST_1;
+  console.log("mnemonic:", mnemonic);
+  const zkWallet = Wallet.fromMnemonic(mnemonic);
+  await upgradeProposal(process.env.PROPOSAL_PROXY, zkWallet);
+  // await upgradeJury(process.env.JURY_PROXY, zkWallet);
   // await deployJury("0x519A4a28e79294d502EC3a1B590F0C64d33b2f50",zkWallet)
-  // await upgradeProposal(process.env.PROPOSAL_PROXY, zkWallet);
 }
 
 main().catch((error) => {
